@@ -35,12 +35,15 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     
-    # Our apps
+    # Your apps
     'accounts',
     'restaurants',
     'orders',
     'customer',
 ]
+
+# Required for django-allauth
+SITE_ID = 1
 
 # Auth settings
 AUTH_USER_MODEL = 'accounts.User'
