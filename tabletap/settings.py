@@ -93,26 +93,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'tabletap.wsgi.application'
 
 # Database configuration
-tmpPostgres = urlparse(os.getenv("DATABASE_URL", "postgres://fake:fake@localhost:5432/tabletap"))
-
-if VERCEL_DEPLOYMENT:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': tmpPostgres.path.replace('/', ''),
-            'USER': tmpPostgres.username,
-            'PASSWORD': tmpPostgres.password,
-            'HOST': tmpPostgres.hostname,
-            'PORT': 5432,
-        }
+tmpPostgres = urlparse(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_XfzA2Ip3PGna@ep-wandering-dawn-a73cdhm4-pooler.ap-southeast-2.aws.neon.tech/neondb?sslmode=require'))
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': 5432,
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
