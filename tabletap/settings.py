@@ -152,3 +152,23 @@ if VERCEL_DEPLOYMENT:
         # This block won't run in the Vercel build, but would locally
         import subprocess
         subprocess.run(['python', 'manage.py', 'collectstatic', '--noinput'])
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+        },
+    },
+}
