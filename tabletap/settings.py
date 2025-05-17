@@ -92,18 +92,51 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'tabletap.wsgi.application'
 
-# Database configuration
-tmpPostgres = urlparse(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_XfzA2Ip3PGna@ep-wandering-dawn-a73cdhm4-pooler.ap-southeast-2.aws.neon.tech/neondb?sslmode=require'))
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
+# Database configuration with error handling
+import os
+from urllib.parse import urlparse
+
+# Get database URL securely with fallback
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+# Setup database with error handling
+if DATABASE_URL:
+    try:
+        # Parse database URL
+        url = urlparse(DATABASE_URL)
+        
+        # Configure PostgreSQL database
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': url.path[1:],  # Remove leading slash
+                'USER': url.username,
+                'PASSWORD': url.password,
+                'HOST': url.hostname,
+                'PORT': url.port or '5432',
+                'OPTIONS': {
+                    'sslmode': 'require',
+                },
+            }
+        }
+        print(f"Database configured: {url.hostname}")
+    except Exception as e:
+        print(f"Error configuring database: {e}")
+        # Fallback to SQLite for safety
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+else:
+    # Development database (SQLite)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
