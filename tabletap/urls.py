@@ -10,7 +10,7 @@ urlpatterns = [
     path('restaurant/', include('restaurants.urls', namespace='restaurants')),
     path('staff/', include('orders.urls', namespace='orders')),
     path('menu/', include('customer.urls', namespace='customer')),
-    path('', RedirectView.as_view(pattern_name='accounts:login')),
+    path('', RedirectView.as_view(url='/admin/'), name='home'),
 ]
 
 if settings.DEBUG:
