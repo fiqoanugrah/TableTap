@@ -144,3 +144,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # WhiteNoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Static files configuration for Vercel
+if VERCEL_DEPLOYMENT:
+    # Force collectstatic to run during deploy
+    if os.environ.get('VERCEL_REBUILD'):
+        # This block won't run in the Vercel build, but would locally
+        import subprocess
+        subprocess.run(['python', 'manage.py', 'collectstatic', '--noinput'])

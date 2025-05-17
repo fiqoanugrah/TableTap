@@ -1,16 +1,10 @@
 {
+    "version": 2,
     "builds": [
       {
         "src": "tabletap/wsgi.py",
         "use": "@vercel/python",
-        "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
-      },
-      {
-        "src": "build_files.sh",
-        "use": "@vercel/static-build",
-        "config": {
-          "distDir": "staticfiles"
-        }
+        "config": { "maxLambdaSize": "15mb" }
       }
     ],
     "routes": [
@@ -22,5 +16,8 @@
         "src": "/(.*)",
         "dest": "tabletap/wsgi.py"
       }
-    ]
+    ],
+    "env": {
+      "PYTHONUNBUFFERED": "1"
+    }
   }
