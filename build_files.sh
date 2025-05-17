@@ -1,4 +1,6 @@
 #!/bin/bash
 # build_files.sh
-pip install -r requirements.txt
-python manage.py collectstatic --noinput
+# Install Python dependencies
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+python3 manage.py collectstatic --noinput
