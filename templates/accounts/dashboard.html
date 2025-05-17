@@ -1,0 +1,39 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Restaurant Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-primary mb-6">Dashboard</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Restaurant Info</h2>
+            <p><strong>Name:</strong> {{ restaurant.name }}</p>
+            <p><strong>Address:</strong> {{ restaurant.address }}</p>
+            <p><strong>Contact:</strong> {{ restaurant.contact_number }}</p>
+            <p><strong>Status:</strong> 
+                <span class="badge {% if restaurant.status == 'active' %}badge-success{% else %}badge-error{% endif %}">
+                    {{ restaurant.status }}
+                </span>
+            </p>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Quick Stats</h2>
+            <p class="mb-2"><strong>Tables:</strong> {{ table_count }}</p>
+            <p class="mb-2"><strong>Menu Categories:</strong> {{ category_count }}</p>
+            <p><strong>Menu Items:</strong> {{ menu_item_count }}</p>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Quick Actions</h2>
+            <div class="space-y-2">
+                <a href="{% url 'restaurants:menu_categories' %}" class="btn btn-primary btn-block">Manage Categories</a>
+                <a href="{% url 'restaurants:menu_items' %}" class="btn btn-primary btn-block">Manage Menu Items</a>
+                <a href="{% url 'restaurants:tables' %}" class="btn btn-primary btn-block">Manage Tables</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
