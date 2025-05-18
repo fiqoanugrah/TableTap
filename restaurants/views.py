@@ -104,3 +104,154 @@ def generate_qr(request, table_id):
         return render(request, 'restaurants/qr_code.html', context)
     except Table.DoesNotExist:
         return redirect('restaurants:tables')
+    
+@login_required
+def add_category(request):
+    """Add a new menu category"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            display_order = request.POST.get('display_order', 0)
+            active = 'active' in request.POST
+            
+            MenuCategory.objects.create(
+                restaurant=restaurant,
+                name=name,
+                description=description,
+                display_order=display_order,
+                active=active
+            )
+            
+            # Could add message here
+            
+            return redirect('restaurants:menu_categories')
+        except Restaurant.DoesNotExist:
+            return redirect('restaurants:create_restaurant')
+    return redirect('restaurants:menu_categories')
+
+@login_required
+def edit_category(request):
+    """Edit an existing menu category"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            category_id = request.POST.get('category_id')
+            category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
+            
+            category.name = request.POST.get('name')
+            category.description = request.POST.get('description', '')
+            category.display_order = request.POST.get('display_order', 0)
+            category.active = 'active' in request.POST
+            category.save()
+            
+            # Could add message here
+            
+            return redirect('restaurants:menu_categories')
+        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
+            # Could add error message here
+            pass
+    return redirect('restaurants:menu_categories')
+
+@login_required
+def delete_category(request):
+    """Delete a menu category"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            category_id = request.POST.get('category_id')
+            category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
+            category.delete()
+            
+            # Could add message here
+            
+            return redirect('restaurants:menu_categories')
+        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
+            # Could add error message here
+            pass
+    return redirect('restaurants:menu_categories')
+
+@login_required
+def add_menu_item(request):
+    """Add a new menu item"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            category_id = request.POST.get('category')
+            category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
+            
+            # Create menu item
+            item = MenuItem(
+                category=category,
+                name=request.POST.get('name'),
+                description=request.POST.get('description', ''),
+                price=request.POST.get('price'),
+                is_available='is_available' in request.POST
+            )
+            item.save()
+            
+            # Handle image if uploaded
+            if 'image' in request.FILES:
+                item.save_image_base64(request.FILES['image'])
+            
+            # Could add success message here
+            
+            return redirect('restaurants:menu_items')
+        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
+            # Could add error message here
+            pass
+    return redirect('restaurants:menu_items')
+
+@login_required
+def edit_menu_item(request):
+    """Edit an existing menu item"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            item_id = request.POST.get('item_id')
+            category_id = request.POST.get('category')
+            
+            # Verify the item and category belong to this restaurant
+            category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
+            item = MenuItem.objects.get(id=item_id, category__restaurant=restaurant)
+            
+            # Update item fields
+            item.category = category
+            item.name = request.POST.get('name')
+            item.description = request.POST.get('description', '')
+            item.price = request.POST.get('price')
+            item.is_available = 'is_available' in request.POST
+            item.save()
+            
+            # Handle image if uploaded
+            if 'image' in request.FILES:
+                item.save_image_base64(request.FILES['image'])
+            
+            # Could add success message here
+            
+            return redirect('restaurants:menu_items')
+        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist, MenuItem.DoesNotExist):
+            # Could add error message here
+            pass
+    return redirect('restaurants:menu_items')
+
+@login_required
+def delete_menu_item(request):
+    """Delete a menu item"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            item_id = request.POST.get('item_id')
+            
+            # Verify the item belongs to this restaurant
+            item = MenuItem.objects.get(id=item_id, category__restaurant=restaurant)
+            item.delete()
+            
+            # Could add success message here
+            
+            return redirect('restaurants:menu_items')
+        except (Restaurant.DoesNotExist, MenuItem.DoesNotExist):
+            # Could add error message here
+            pass
+    return redirect('restaurants:menu_items')
