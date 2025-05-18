@@ -1,0 +1,241 @@
+# orders/templates/orders/order_detail.html
+{% extends 'orders/base.html' %}
+{% load static %}
+
+{% block title %}Order #{{ order.id }} - {{ restaurant.name }}{% endblock %}
+
+{% block page_title %}Order #{{ order.id }}{% endblock %}
+
+{% block staff_content %}
+<div class="mb-4">
+    <a href="{% url 'orders:order_list' %}?status={{ order.status }}" class="btn btn-ghost btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Orders
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Order Details -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-lg text-primary">Order #{{ order.id }}</h2>
+                    <span class="badge 
+                        {% if order.status == 'pending' %}badge-warning
+                        {% elif order.status == 'preparing' %}badge-info
+                        {% elif order.status == 'ready' %}badge-success
+                        {% elif order.status == 'completed' %}badge-success
+                        {% else %}badge-error{% endif %}">
+                        {% for status_code, status_label in order.STATUS_CHOICES %}
+                            {% if status_code == order.status %}
+                                {{ status_label }}
+                            {% endif %}
+                        {% endfor %}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">{{ order.created_at|date:"F j, Y, g:i a" }} ({{ order.created_at|timesince }} ago)</p>
+            </div>
+            
+            <!-- Order Status Tracker -->
+            <div class="p-4 border-b">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <span class="text-xs mt-1">Ordered</span>
+                    </div>
+                    <div class="flex-1 h-1 mx-2 bg-gray-200">
+                        <div class="h-full bg-primary 
+                            {% if order.status == 'pending' %}w-0
+                            {% else %}w-full{% endif %}"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full {% if order.status == 'pending' %}bg-gray-300{% else %}bg-primary text-white{% endif %} flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs mt-1">Preparing</span>
+                    </div>
+                    <div class="flex-1 h-1 mx-2 bg-gray-200">
+                        <div class="h-full bg-primary 
+                            {% if order.status == 'pending' or order.status == 'preparing' %}w-0
+                            {% else %}w-full{% endif %}"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full {% if order.status == 'ready' or order.status == 'completed' %}bg-primary text-white{% else %}bg-gray-300{% endif %} flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs mt-1">Ready</span>
+                    </div>
+                    <div class="flex-1 h-1 mx-2 bg-gray-200">
+                        <div class="h-full bg-primary 
+                            {% if order.status == 'completed' %}w-full
+                            {% else %}w-0{% endif %}"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full {% if order.status == 'completed' %}bg-primary text-white{% else %}bg-gray-300{% endif %} flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs mt-1">Completed</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Items -->
+            <ul class="divide-y">
+                {% for item in order.items.all %}
+                <li class="p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <h3 class="font-medium text-gray-800">{{ item.menu_item.name }}</h3>
+                            {% if item.notes %}
+                            <p class="text-sm text-gray-500 mt-1">Notes: {{ item.notes }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="text-right">
+                            <p class="font-medium text-gray-800">${{ item.price|floatformat:2 }} x {{ item.quantity }}</p>
+                            <p class="text-sm text-gray-500">${{ item.get_total|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <!-- Total -->
+            <div class="p-4 bg-gray-50 border-t">
+                {% if order.special_instructions %}
+                <div class="mb-4">
+                    <h3 class="font-medium text-gray-700 mb-1">Special Instructions:</h3>
+                    <p class="text-gray-600 bg-white p-2 rounded border">{{ order.special_instructions }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="flex justify-between font-bold text-lg">
+                    <span>Total:</span>
+                    <span>${{ order.total_amount|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Actions -->
+    <div class="lg:col-span-1">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div class="p-4 bg-gray-50 border-b">
+                <h2 class="font-bold text-lg text-primary">Order Actions</h2>
+            </div>
+            <div class="p-4">
+                <h3 class="font-medium text-gray-700 mb-2">Update Status</h3>
+                
+                {% if order.status != 'completed' and order.status != 'cancelled' %}
+                <div class="space-y-3">
+                    {% if order.status == 'pending' %}
+                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="preparing">
+                        <button type="submit" class="btn btn-info w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Start Preparing
+                        </button>
+                    </form>
+                    {% elif order.status == 'preparing' %}
+                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="ready">
+                        <button type="submit" class="btn btn-success w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                            Mark as Ready
+                        </button>
+                    </form>
+                    {% elif order.status == 'ready' %}
+                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="completed">
+                        <button type="submit" class="btn btn-primary w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Complete Order
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="cancelled">
+                        <button type="submit" class="btn btn-error w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancel Order
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-gray-500">
+                    <p>This order is already {{ order.get_status_display }}.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b">
+                <h2 class="font-bold text-lg text-primary">Order Information</h2>
+            </div>
+            <div class="p-4">
+                <ul class="space-y-3">
+                    <li class="flex justify-between">
+                        <span class="text-gray-600">Table:</span>
+                        <span class="font-medium">Table #{{ order.table.table_number }}</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span class="text-gray-600">Order Time:</span>
+                        <span class="font-medium">{{ order.created_at|date:"H:i" }}</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span class="text-gray-600">Date:</span>
+                        <span class="font-medium">{{ order.created_at|date:"F j, Y" }}</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span class="text-gray-600">Items:</span>
+                        <span class="font-medium">{{ order.items.count }}</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span class="text-gray-600">Status:</span>
+                        <span class="badge 
+                            {% if order.status == 'pending' %}badge-warning
+                            {% elif order.status == 'preparing' %}badge-info
+                            {% elif order.status == 'ready' %}badge-success
+                            {% elif order.status == 'completed' %}badge-success
+                            {% else %}badge-error{% endif %}">
+                            {% for status_code, status_label in order.STATUS_CHOICES %}
+                                {% if status_code == order.status %}
+                                    {{ status_label }}
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

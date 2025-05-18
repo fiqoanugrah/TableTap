@@ -1,0 +1,396 @@
+{% extends 'customer/base.html' %}
+{% load static %}
+{% load cart_tags %}
+
+{% block title %}{{ restaurant.name }} - Menu{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen pb-16">
+    <!-- Restaurant Header -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    {% if restaurant.logo %}
+                    <img src="data:image/png;base64,{{ restaurant.logo }}" alt="{{ restaurant.name }}" class="w-12 h-12 rounded-full">
+                    {% else %}
+                    <div class="bg-white w-12 h-12 rounded-full flex items-center justify-center">
+                        <span class="text-primary font-bold text-xl">{{ restaurant.name|first }}</span>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h1 class="text-xl font-bold">{{ restaurant.name }}</h1>
+                        <p class="text-sm opacity-80">Table #{{ table.table_number }}</p>
+                    </div>
+                </div>
+                <div class="indicator">
+                    <span id="cart-count" class="indicator-item badge badge-secondary">
+                        {% with cart_key='cart_'|add:restaurant.id|stringformat:'s'|add:'_'|add:table.id|stringformat:'s' %}
+                        {% with cart_items=request.session|get_item:cart_key %}
+                        {{ cart_items|cart_item_count }}
+                        {% endwith %}
+                        {% endwith %}
+                    </span> 
+                    <a href="{% url 'customer:cart' restaurant.id table.id %}" class="btn btn-circle btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Active Orders Notification -->
+    {% if active_orders %}
+    <div class="container mx-auto px-4 py-2">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h3 class="font-medium text-blue-800 mb-2">Your Active Orders</h3>
+            <div class="space-y-2">
+                {% for order in active_orders %}
+                <div class="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
+                    <div>
+                        <p class="font-medium">Order #{{ order.id }}</p>
+                        <p class="text-sm text-gray-500">{{ order.created_at|timesince }} ago</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="badge 
+                            {% if order.status == 'pending' %}badge-warning
+                            {% elif order.status == 'preparing' %}badge-info
+                            {% elif order.status == 'ready' %}badge-success
+                            {% endif %} mr-2">
+                            {% for status_code, status_label in order.STATUS_CHOICES %}
+                                {% if status_code == order.status %}
+                                    {{ status_label }}
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                        <a href="{% url 'customer:order_status' order.id %}" class="btn btn-sm btn-primary">Track Order</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Search Bar -->
+    <div class="container mx-auto px-4 py-4">
+        <div class="relative">
+            <input type="text" id="search-menu" placeholder="Search menu..." class="input input-bordered w-full pr-10" />
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Tabs -->
+    <div class="container mx-auto px-4 py-2 overflow-x-auto">
+        <div class="flex gap-2 whitespace-nowrap pb-2">
+            <button class="btn btn-primary category-btn" data-category="all">All</button>
+            {% for category in categories %}
+            <button class="btn btn-ghost category-btn" data-category="{{ category.id }}">{{ category.name }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Menu Items -->
+    <div class="container mx-auto px-4 py-4">
+        <h2 class="text-2xl font-bold mb-4 text-primary">All Menu Items</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for category in categories %}
+                {% for item in category.items.all %}
+                    {% if item.is_available %}
+                    <div class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow menu-item" 
+                         data-category="{{ category.id }}" data-name="{{ item.name|lower }}">
+                        <figure>
+                            {% if item.image %}
+                            <img src="data:image/png;base64,{{ item.image }}" alt="{{ item.name }}" class="w-full h-48 object-cover">
+                            {% else %}
+                            <div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </figure>
+                        <div class="card-body">
+                            <div class="flex justify-between items-start">
+                                <h3 class="card-title">{{ item.name }}</h3>
+                                <div class="badge badge-secondary">${{ item.price }}</div>
+                            </div>
+                            <p class="text-sm text-gray-600">{{ item.description|truncatechars:100 }}</p>
+                            <div class="card-actions justify-end mt-2">
+                                <button class="btn btn-primary btn-sm" 
+                                        onclick="showAddToCartModal({{ item.id }}, '{{ item.name|escapejs }}', '{{ item.price }}')">
+                                    Add to Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+
+            <!-- No results message (hidden by default) -->
+            <div id="no-results" class="hidden col-span-full text-center py-8">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="text-xl font-bold text-gray-700">No menu items found</h3>
+                <p class="text-gray-500 mt-2">Try a different search term or category.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add to Cart Modal -->
+    <dialog id="add-to-cart-modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4" id="modal-item-name">Add to Cart</h3>
+            <form method="POST" id="add-to-cart-form">
+                {% csrf_token %}
+                <input type="hidden" id="add-quantity" name="quantity" value="1">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <div class="flex items-center">
+                        <button type="button" class="btn btn-sm btn-circle" onclick="decrementQuantity()">-</button>
+                        <span id="quantity-display" class="mx-4 text-xl font-bold">1</span>
+                        <button type="button" class="btn btn-sm btn-circle" onclick="incrementQuantity()">+</button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Special Instructions (optional)</label>
+                    <textarea id="notes" name="notes" rows="2" class="textarea textarea-bordered w-full" 
+                              placeholder="E.g., No onions, extra sauce, etc."></textarea>
+                </div>
+                
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-to-cart-modal').close()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Add to Cart
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Floating Order Tracker Button -->
+    {% if active_orders %}
+    <div class="fixed bottom-20 right-4 z-50">
+        <a href="{% url 'customer:order_status' active_orders.0.id %}" class="btn btn-primary btn-circle shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Bottom Navigation -->
+    <div class="btm-nav btm-nav-sm bg-white border-t shadow-md">
+        <button class="text-primary active">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span class="btm-nav-label">Menu</span>
+        </button>
+        <a href="{% url 'customer:cart' restaurant.id table.id %}" class="text-primary">
+            <div class="indicator">
+                <span class="indicator-item badge badge-secondary badge-sm">
+                    {% with cart_key='cart_'|add:restaurant.id|stringformat:'s'|add:'_'|add:table.id|stringformat:'s' %}
+                    {% with cart_items=request.session|get_item:cart_key %}
+                    {{ cart_items|cart_item_count }}
+                    {% endwith %}
+                    {% endwith %}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <span class="btm-nav-label">Cart</span>
+        </a>
+        {% if active_orders %}
+        <a href="{% url 'customer:order_status' active_orders.0.id %}" class="text-primary">
+            <div class="indicator">
+                <span class="indicator-item badge badge-accent badge-sm">{{ active_orders.count }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </div>
+            <span class="btm-nav-label">Orders</span>
+        </a>
+        {% else %}
+        <button class="text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="btm-nav-label">Help</span>
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let currentQuantity = 1;
+
+function showAddToCartModal(itemId, itemName, itemPrice) {
+    // Reset form
+    currentQuantity = 1;
+    document.getElementById('quantity-display').textContent = currentQuantity;
+    document.getElementById('add-quantity').value = currentQuantity;
+    document.getElementById('notes').value = '';
+    
+    // Set item name in modal
+    document.getElementById('modal-item-name').textContent = itemName;
+    
+    // Set form action
+    document.getElementById('add-to-cart-form').action = 
+        "{% url 'customer:add_to_cart' restaurant_id=restaurant.id table_id=table.id menu_item_id=0 %}".replace('0', itemId);
+    
+    // Show modal
+    document.getElementById('add-to-cart-modal').showModal();
+}
+
+function incrementQuantity() {
+    if (currentQuantity < 10) {  // Set a reasonable maximum
+        currentQuantity++;
+        updateQuantityDisplay();
+    }
+}
+
+function decrementQuantity() {
+    if (currentQuantity > 1) {
+        currentQuantity--;
+        updateQuantityDisplay();
+    }
+}
+
+function updateQuantityDisplay() {
+    document.getElementById('quantity-display').textContent = currentQuantity;
+    document.getElementById('add-quantity').value = currentQuantity;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Search and filter functionality
+    const searchInput = document.getElementById('search-menu');
+    const menuItems = document.querySelectorAll('.menu-item');
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    const noResults = document.getElementById('no-results');
+    
+    let currentCategory = 'all';
+    let searchTerm = '';
+    
+    // Function to filter menu items
+    function filterItems() {
+        let visibleCount = 0;
+        
+        menuItems.forEach(item => {
+            // Get item category and name
+            const itemCategory = item.dataset.category;
+            const itemName = item.dataset.name;
+            
+            // Check if item matches both category and search filters
+            const matchesCategory = currentCategory === 'all' || itemCategory === currentCategory;
+            const matchesSearch = searchTerm === '' || itemName.includes(searchTerm.toLowerCase());
+            
+            // Show/hide based on filters
+            if (matchesCategory && matchesSearch) {
+                item.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+        
+        // Show/hide no results message
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+        
+        // Update heading
+        const heading = document.querySelector('h2');
+        if (currentCategory === 'all') {
+            heading.textContent = 'All Menu Items';
+        } else {
+            const categoryName = document.querySelector(`.category-btn[data-category="${currentCategory}"]`).textContent;
+            heading.textContent = categoryName;
+        }
+    }
+    
+    // Set up category button clicks
+    categoryButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            categoryButtons.forEach(btn => btn.classList.remove('btn-primary'));
+            categoryButtons.forEach(btn => btn.classList.add('btn-ghost'));
+            this.classList.remove('btn-ghost');
+            this.classList.add('btn-primary');
+            
+            // Update current category
+            currentCategory = this.dataset.category;
+            
+            // Filter items
+            filterItems();
+        });
+    });
+    
+    // Set up search input
+    searchInput.addEventListener('input', function() {
+        searchTerm = this.value.trim();
+        filterItems();
+    });
+
+    // Add to cart form submission handler with AJAX
+    const addToCartForm = document.getElementById('add-to-cart-form');
+    if (addToCartForm) {
+        addToCartForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const form = this;
+            const formData = new FormData(form);
+            
+            // Add a header to identify AJAX request
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    document.getElementById('add-to-cart-modal').close();
+                    
+                    // Update cart indicators
+                    if (window.updateCartCounters) {
+                        window.updateCartCounters(data.cart_count);
+                    } else {
+                        document.querySelectorAll('.indicator-item').forEach(element => {
+                            element.textContent = data.cart_count;
+                        });
+                    }
+                    
+                    // Show success toast
+                    showToast(`Added ${currentQuantity} item(s) to cart`, 'success');
+                } else {
+                    showToast(data.error || 'Failed to add to cart', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred', 'error');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

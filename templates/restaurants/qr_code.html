@@ -1,0 +1,113 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}QR Code - Table #{{ table.table_number }}{% endblock %}
+
+{% block body_class %}bg-gray-100{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <div class="w-full max-w-lg">
+        <div class="bg-white rounded-lg overflow-hidden shadow-lg">
+            <!-- Header -->
+            <div class="bg-primary text-white p-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold">QR Code for Table #{{ table.table_number }}</h1>
+                    <a href="{% url 'restaurants:tables' %}" class="btn btn-sm btn-circle btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- QR Code Display -->
+            <div class="p-6">
+                <div class="flex flex-col items-center">
+                    <!-- Restaurant Info -->
+                    <div class="mb-4 text-center">
+                        <h2 class="text-lg font-bold text-gray-800">{{ restaurant.name }}</h2>
+                        <p class="text-sm text-gray-600">{{ restaurant.address }}</p>
+                    </div>
+                    
+                    <!-- QR Code Image -->
+                    <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code for Table {{ table.table_number }}" class="w-64 h-64">
+                    </div>
+                    
+                    <!-- Table Info -->
+                    <div class="text-center mb-4">
+                        <h3 class="text-lg font-bold">Table #{{ table.table_number }}</h3>
+                        <p class="text-sm text-gray-600">Seats: {{ table.seats }}</p>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Scan this code or visit:<br>
+                            <a href="{{ menu_url }}" class="text-primary hover:underline" target="_blank">{{ menu_url }}</a>
+                        </p>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex space-x-3">
+                        <a href="{% url 'restaurants:generate_qr' table.id %}?download=1" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download
+                        </a>
+                        <button class="btn btn-secondary" onclick="printQRCode()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Print
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="bg-gray-50 p-4 border-t">
+                <div class="text-center">
+                    <a href="{% url 'restaurants:tables' %}" class="text-primary hover:underline">
+                        &larr; Back to Tables
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function printQRCode() {
+    var printWindow = window.open('', '_blank');
+    var qrImage = 'data:image/png;base64,{{ qr_code }}';
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>QR Code - Table #{{ table.table_number }}</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; }
+                .container { margin: 20px auto; max-width: 400px; }
+                h1 { font-size: 24px; margin-bottom: 5px; }
+                h2 { font-size: 18px; margin-bottom: 20px; }
+                img { width: 250px; height: 250px; margin-bottom: 15px; }
+                p { font-size: 14px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>{{ restaurant.name }}</h1>
+                <h2>Table #{{ table.table_number }}</h2>
+                <img src="${qrImage}" alt="QR Code">
+                <p>Scan to access the menu</p>
+                <p>Seats: {{ table.seats }}</p>
+            </div>
+            <script>
+                window.onload = function() { window.print(); window.close(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+</script>
+{% endblock %}

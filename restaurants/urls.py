@@ -16,4 +16,9 @@ urlpatterns = [
     path('menu/items/add/', views.add_menu_item, name='add_menu_item'),
     path('menu/items/edit/', views.edit_menu_item, name='edit_menu_item'),
     path('menu/items/delete/', views.delete_menu_item, name='delete_menu_item'),
+    path('tables/', views.tables, name='tables'),
+    path('tables/add/', views.add_table, name='add_table'),
+    path('tables/edit/', views.edit_table, name='edit_table'),
+    path('tables/delete/', views.delete_table, name='delete_table'),
+    path('tables/generate-qr/<int:table_id>/', views.generate_qr, name='generate_qr'),
 ]

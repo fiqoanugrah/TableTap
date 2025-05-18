@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TableTap{% endblock %}</title>
+    
+    <!-- Tailwind CSS and DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.5.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#0A2463", // Navy Blue
+                        secondary: "#FFC107", // Amber Gold
+                        accent: "#7B0828", // Burgundy
+                        neutral: "#F8F9FA",
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Custom styles */
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <div id="content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Toast Container for notifications -->
+    <div id="toast-container" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50"></div>
+    
+    <!-- Common Scripts -->
+    <script>
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `px-4 py-2 rounded-full shadow-lg transition-all duration-300 transform translate-y-0 opacity-100 ${
+            type === 'success' ? 'bg-green-600 text-white' : 
+            type === 'error' ? 'bg-red-600 text-white' : 
+            'bg-blue-600 text-white'
+        }`;
+        toast.innerHTML = `
+            <div class="flex items-center space-x-2">
+                ${type === 'success' ? 
+                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>' : 
+                    type === 'error' ? 
+                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>' :
+                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+                }
+                <span>${message}</span>
+            </div>
+        `;
+        
+        // Add to container
+        const container = document.getElementById('toast-container');
+        container.appendChild(toast);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    </script>
+
+    <!-- Function to update all cart counters across the site -->
+    <script>
+        function updateCartCounters(count) {
+            document.querySelectorAll('.indicator-item, .cart-count, .cart-count-badge').forEach(element => {
+                element.textContent = count;
+            });
+        }
+
+        // Add this to window object so it can be called from any page
+        window.updateCartCounters = updateCartCounters;
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,6 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Restaurant, Table, MenuCategory, MenuItem
+from django.http import HttpResponse, JsonResponse
+from django.contrib import messages
+import base64
+from io import BytesIO
+import qrcode
 
 @login_required
 def dashboard(request):
@@ -255,3 +260,151 @@ def delete_menu_item(request):
             # Could add error message here
             pass
     return redirect('restaurants:menu_items')
+
+@login_required
+def add_table(request):
+    """Add a new table"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            table_number = request.POST.get('table_number')
+            seats = request.POST.get('seats', 2)
+            status = request.POST.get('status', 'available')
+            
+            # Check if table number already exists for this restaurant
+            if Table.objects.filter(restaurant=restaurant, table_number=table_number).exists():
+                messages.error(request, f"Table #{table_number} already exists.")
+                return redirect('restaurants:tables')
+            
+            # Create new table
+            Table.objects.create(
+                restaurant=restaurant,
+                table_number=table_number,
+                seats=seats,
+                status=status
+            )
+            
+            messages.success(request, f"Table #{table_number} has been added.")
+            
+        except Restaurant.DoesNotExist:
+            return redirect('restaurants:create_restaurant')
+    
+    return redirect('restaurants:tables')
+
+@login_required
+def edit_table(request):
+    """Edit an existing table"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            table_id = request.POST.get('table_id')
+            table = Table.objects.get(id=table_id, restaurant=restaurant)
+            
+            new_table_number = request.POST.get('table_number')
+            
+            # Check if table number already exists for another table
+            if (Table.objects.filter(restaurant=restaurant, table_number=new_table_number)
+                    .exclude(id=table_id).exists()):
+                messages.error(request, f"Table #{new_table_number} already exists.")
+                return redirect('restaurants:tables')
+            
+            # Update table fields
+            table.table_number = new_table_number
+            table.seats = request.POST.get('seats', 2)
+            table.status = request.POST.get('status', 'available')
+            table.save()
+            
+            messages.success(request, f"Table #{new_table_number} has been updated.")
+            
+        except (Restaurant.DoesNotExist, Table.DoesNotExist):
+            messages.error(request, "Table not found or you don't have permission to edit it.")
+            
+    return redirect('restaurants:tables')
+
+@login_required
+def delete_table(request):
+    """Delete a table"""
+    if request.method == 'POST':
+        try:
+            restaurant = Restaurant.objects.get(owner=request.user)
+            table_id = request.POST.get('table_id')
+            table = Table.objects.get(id=table_id, restaurant=restaurant)
+            table_number = table.table_number
+            
+            table.delete()
+            
+            messages.success(request, f"Table #{table_number} has been deleted.")
+            
+        except (Restaurant.DoesNotExist, Table.DoesNotExist):
+            messages.error(request, "Table not found or you don't have permission to delete it.")
+            
+    return redirect('restaurants:tables')
+
+@login_required
+def generate_qr(request, table_id):
+    """Generate QR code for a table"""
+    try:
+        table = Table.objects.get(id=table_id)
+        restaurant = table.restaurant
+        
+        # Security check to prevent accessing other restaurants' tables
+        if restaurant.owner != request.user:
+            messages.error(request, "You don't have permission to access this table.")
+            return redirect('restaurants:tables')
+            
+        # Generate QR code
+        base_url = request.build_absolute_uri('/')[:-1]  # Get base URL without trailing slash
+        menu_url = f"{base_url}/menu/{restaurant.id}/{table.id}/"
+        
+        import qrcode
+        from io import BytesIO
+        import base64
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(menu_url)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        
+        qr_code_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        
+        # Save QR code to table
+        table.qr_code = qr_code_base64
+        table.qr_code_url = menu_url
+        table.save()
+        
+        # If this is an AJAX request, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'qr_code': qr_code_base64,
+                'qr_code_url': menu_url
+            })
+            
+        # Check if we need to show QR code page or download directly
+        if 'download' in request.GET:
+            # Set up response for download
+            response = HttpResponse(base64.b64decode(qr_code_base64), content_type='image/png')
+            response['Content-Disposition'] = f'attachment; filename="table_{table.table_number}_qr.png"'
+            return response
+        
+        # Show QR code page
+        context = {
+            'table': table,
+            'restaurant': restaurant,
+            'qr_code': qr_code_base64,
+            'menu_url': menu_url
+        }
+        return render(request, 'restaurants/qr_code.html', context)
+        
+    except Table.DoesNotExist:
+        messages.error(request, "Table not found.")
+        return redirect('restaurants:tables')
+    

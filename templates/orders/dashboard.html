@@ -1,0 +1,198 @@
+# orders/templates/orders/dashboard.html
+{% extends 'orders/base.html' %}
+{% load static %}
+
+{% block title %}Staff Dashboard - {{ restaurant.name }}{% endblock %}
+
+{% block page_title %}Staff Dashboard{% endblock %}
+
+{% block staff_content %}
+<!-- Page Title -->
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-primary">Orders Dashboard</h1>
+    <p class="text-gray-600">Manage and track customer orders</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="stat bg-white shadow rounded-lg">
+        <div class="stat-figure text-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="stat-title">Pending</div>
+        <div class="stat-value text-warning">{{ pending_count }}</div>
+        <div class="stat-desc">
+            <a href="{% url 'orders:order_list' %}?status=pending" class="text-secondary">View Orders</a>
+        </div>
+    </div>
+
+    <div class="stat bg-white shadow rounded-lg">
+        <div class="stat-figure text-info">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+        </div>
+        <div class="stat-title">Preparing</div>
+        <div class="stat-value text-info">{{ preparing_count }}</div>
+        <div class="stat-desc">
+            <a href="{% url 'orders:order_list' %}?status=preparing" class="text-secondary">View Orders</a>
+        </div>
+    </div>
+
+    <div class="stat bg-white shadow rounded-lg">
+        <div class="stat-figure text-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+        </div>
+        <div class="stat-title">Ready</div>
+        <div class="stat-value text-success">{{ ready_count }}</div>
+        <div class="stat-desc">
+            <a href="{% url 'orders:order_list' %}?status=ready" class="text-secondary">View Orders</a>
+        </div>
+    </div>
+
+    <div class="stat bg-white shadow rounded-lg">
+        <div class="stat-figure text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+        </div>
+        <div class="stat-title">Today's Orders</div>
+        <div class="stat-value text-gray-500">{{ today_count }}</div>
+        <div class="stat-desc">
+            <a href="{% url 'orders:order_list' %}?date=today" class="text-secondary">View All</a>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="bg-white p-6 rounded-lg shadow mb-6">
+    <h2 class="text-lg font-semibold mb-4 text-primary">Quick Actions</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{% url 'orders:order_list' %}?status=pending" class="btn btn-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Process Pending Orders
+        </a>
+        <a href="{% url 'orders:order_list' %}?status=preparing" class="btn btn-info">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            View Preparing Orders
+        </a>
+        <a href="{% url 'orders:order_list' %}?status=ready" class="btn btn-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            Ready for Pickup Orders
+        </a>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="bg-white p-6 rounded-lg shadow">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-primary">Recent Orders</h2>
+        <a href="{% url 'orders:order_list' %}?status=all" class="text-secondary hover:underline">View All</a>
+    </div>
+    
+    {% if recent_orders %}
+    <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Table</th>
+                    <th>Time</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td>{{ order.id }}</td>
+                    <td>Table #{{ order.table.table_number }}</td>
+                    <td>{{ order.created_at|time:"H:i" }}</td>
+                    <td>{{ order.items.count }}</td>
+                    <td>${{ order.total_amount|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if order.status == 'pending' %}badge-warning
+                            {% elif order.status == 'preparing' %}badge-info
+                            {% elif order.status == 'ready' %}badge-success
+                            {% elif order.status == 'completed' %}badge-success
+                            {% else %}badge-error{% endif %}">
+                            {% for status_code, status_label in order.STATUS_CHOICES %}
+                                {% if status_code == order.status %}
+                                    {{ status_label }}
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-sm btn-ghost">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content menu menu-sm p-2 shadow bg-base-100 rounded-box w-52">
+                                <li><a href="{% url 'orders:order_detail' order.id %}">View Details</a></li>
+                                {% if order.status == 'pending' %}
+                                <li>
+                                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="preparing">
+                                        <button type="submit" class="w-full text-left">Start Preparing</button>
+                                    </form>
+                                </li>
+                                {% elif order.status == 'preparing' %}
+                                <li>
+                                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="ready">
+                                        <button type="submit" class="w-full text-left">Mark as Ready</button>
+                                    </form>
+                                </li>
+                                {% elif order.status == 'ready' %}
+                                <li>
+                                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="completed">
+                                        <button type="submit" class="w-full text-left">Complete Order</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                                {% if order.status != 'cancelled' and order.status != 'completed' %}
+                                <li>
+                                    <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="cancelled">
+                                        <button type="submit" class="w-full text-left text-error">Cancel Order</button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4 text-gray-500">
+        <p>No recent orders found.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

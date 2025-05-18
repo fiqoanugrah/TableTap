@@ -10,6 +10,7 @@ urlpatterns = [
     path('restaurant/', include('restaurants.urls', namespace='restaurants')),
     path('staff/', include('orders.urls', namespace='orders')),
     path('menu/', include('customer.urls', namespace='customer')),
+    path('orders/', include('orders.urls')),
     path('', RedirectView.as_view(url='/accounts/login/'), name='home'),  # Redirect ke login page
 ]
 

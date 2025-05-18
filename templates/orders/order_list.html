@@ -1,0 +1,175 @@
+# orders/templates/orders/order_list.html
+{% extends 'orders/base.html' %}
+{% load static %}
+
+{% block title %}Orders - {{ status_display|title }} - {{ restaurant.name }}{% endblock %}
+
+{% block page_title %}{{ status_display|title }} Orders{% endblock %}
+
+{% block staff_content %}
+<!-- Page Title -->
+<div class="mb-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-primary">{{ status_display|title }} Orders</h1>
+            <p class="text-gray-600">{% if status == "all" %}All orders{% elif date == "today" %}Orders received today{% else %}Orders with status: {{ status_display }}{% endif %}</p>
+        </div>
+        <div>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filter Orders
+                </label>
+                <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a href="{% url 'orders:order_list' %}?status=all">All Orders</a></li>
+                    <li><a href="{% url 'orders:order_list' %}?status=pending">Pending</a></li>
+                    <li><a href="{% url 'orders:order_list' %}?status=preparing">Preparing</a></li>
+                    <li><a href="{% url 'orders:order_list' %}?status=ready">Ready</a></li>
+                    <li><a href="{% url 'orders:order_list' %}?status=completed">Completed</a></li>
+                    <li><a href="{% url 'orders:order_list' %}?status=cancelled">Cancelled</a></li>
+                    <li><hr class="my-1"></li>
+                    <li><a href="{% url 'orders:order_list' %}?date=today">Today's Orders</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    {% if orders %}
+    <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Table</th>
+                    <th>Time</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr class="{% if order.status == 'pending' %}bg-warning/10{% elif order.status == 'preparing' %}bg-info/10{% elif order.status == 'ready' %}bg-success/10{% endif %}">
+                    <td class="font-medium">{{ order.id }}</td>
+                    <td>Table #{{ order.table.table_number }}</td>
+                    <td>{{ order.created_at|date:"H:i" }} ({{ order.created_at|timesince }} ago)</td>
+                    <td>{{ order.items.count }}</td>
+                    <td>${{ order.total_amount|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if order.status == 'pending' %}badge-warning
+                            {% elif order.status == 'preparing' %}badge-info
+                            {% elif order.status == 'ready' %}badge-success
+                            {% elif order.status == 'completed' %}badge-success
+                            {% else %}badge-error{% endif %}">
+                            {% for status_code, status_label in order.STATUS_CHOICES %}
+                                {% if status_code == order.status %}
+                                    {{ status_label }}
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="flex space-x-2">
+                            <a href="{% url 'orders:order_detail' order.id %}" class="btn btn-sm btn-ghost">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </a>
+                            <div class="dropdown dropdown-end">
+                                <label tabindex="0" class="btn btn-sm btn-ghost">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                </label>
+                                <ul tabindex="0" class="dropdown-content menu menu-sm p-2 shadow bg-base-100 rounded-box w-52">
+                                    <li><a href="{% url 'orders:order_detail' order.id %}">View Details</a></li>
+                                    {% if order.status == 'pending' %}
+                                    <li>
+                                        <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="preparing">
+                                            <button type="submit" class="w-full text-left">Start Preparing</button>
+                                        </form>
+                                    </li>
+                                    {% elif order.status == 'preparing' %}
+                                    <li>
+                                        <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="ready">
+                                            <button type="submit" class="w-full text-left">Mark as Ready</button>
+                                        </form>
+                                    </li>
+                                    {% elif order.status == 'ready' %}
+                                    <li>
+                                        <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="completed">
+                                            <button type="submit" class="w-full text-left">Complete Order</button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                    {% if order.status != 'cancelled' and order.status != 'completed' %}
+                                    <li>
+                                        <form method="post" action="{% url 'orders:update_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="cancelled">
+                                            <button type="submit" class="w-full text-left text-error">Cancel Order</button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-8 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 class="text-xl font-medium text-gray-900 mb-1">No orders found</h3>
+        <p class="text-gray-500 mb-4">There are no orders with the selected filter.</p>
+        <a href="{% url 'orders:order_list' %}?status=all" class="btn btn-primary">View All Orders</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if orders.has_other_pages %}
+<div class="flex justify-center mt-6">
+    <div class="btn-group">
+        {% if orders.has_previous %}
+        <a href="?{% if status %}status={{ status }}&{% endif %}{% if date %}date={{ date }}&{% endif %}page={{ orders.previous_page_number }}" class="btn btn-outline">Previous</a>
+        {% else %}
+        <button class="btn btn-outline" disabled>Previous</button>
+        {% endif %}
+        
+        {% for num in orders.paginator.page_range %}
+            {% if orders.number == num %}
+            <button class="btn btn-active">{{ num }}</button>
+            {% else %}
+            <a href="?{% if status %}status={{ status }}&{% endif %}{% if date %}date={{ date }}&{% endif %}page={{ num }}" class="btn btn-outline">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+        
+        {% if orders.has_next %}
+        <a href="?{% if status %}status={{ status }}&{% endif %}{% if date %}date={{ date }}&{% endif %}page={{ orders.next_page_number }}" class="btn btn-outline">Next</a>
+        {% else %}
+        <button class="btn btn-outline" disabled>Next</button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
