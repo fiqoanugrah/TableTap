@@ -2,6 +2,13 @@
     "version": 2,
     "builds": [
       {
+        "src": "build_files.sh",
+        "use": "@vercel/static-build",
+        "config": {
+          "distDir": "staticfiles_build"
+        }
+      },
+      {
         "src": "tabletap/wsgi.py",
         "use": "@vercel/python",
         "config": { "maxLambdaSize": "15mb" }
@@ -13,11 +20,16 @@
         "dest": "/static/$1"
       },
       {
+        "src": "/media/(.*)",
+        "dest": "/media/$1"
+      },
+      {
         "src": "/(.*)",
         "dest": "tabletap/wsgi.py"
       }
     ],
     "env": {
-      "PYTHONUNBUFFERED": "1"
+      "PYTHONUNBUFFERED": "1",
+      "VERCEL_DEPLOYMENT": "True"
     }
   }

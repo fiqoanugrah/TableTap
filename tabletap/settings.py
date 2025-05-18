@@ -184,30 +184,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # WhiteNoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Static files configuration for Vercel
-if VERCEL_DEPLOYMENT:
-    # Force collectstatic to run during deploy
-    if os.environ.get('VERCEL_REBUILD'):
-        # This block won't run in the Vercel build, but would locally
-        import subprocess
-        subprocess.run(['python', 'manage.py', 'collectstatic', '--noinput'])
+VERCEL_DEPLOYMENT = os.environ.get('VERCEL_DEPLOYMENT', 'False') == 'True'
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-        },
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'ERROR',
-        },
-    },
-}
+# Static files configuration
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+if VERCEL_DEPLOYMENT:
+    # Vercel-specific settings
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build', 'static')
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media_build', 'media')
+else:
+    # Local development settings
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
