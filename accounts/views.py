@@ -20,11 +20,18 @@ def home_view(request):
     # Jika user adalah pemilik restoran (admin)
     if hasattr(request.user, 'role') and request.user.role == 'admin':
         try:
-            # Cek apakah user memiliki restaurant
-            has_restaurant = Restaurant.objects.filter(owner=request.user).exists()
-            print(f"User has restaurant: {has_restaurant}")
+            # Cek apakah user memiliki restaurant sebagai owner
+            has_restaurant_as_owner = Restaurant.objects.filter(owner=request.user).exists()
+            print(f"User has restaurant as owner: {has_restaurant_as_owner}")
             
-            if has_restaurant:
+            if has_restaurant_as_owner:
+                return redirect('restaurants:dashboard')
+            
+            # Jika bukan owner, cek apakah user adalah admin staff
+            has_restaurant_as_staff = Restaurant.objects.filter(staff=request.user).exists()
+            print(f"User has restaurant as staff: {has_restaurant_as_staff}")
+            
+            if has_restaurant_as_staff:
                 return redirect('restaurants:dashboard')
             else:
                 # Jika admin tidak memiliki restaurant, redirect ke halaman pembuatan restaurant

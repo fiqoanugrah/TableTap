@@ -14,6 +14,32 @@ from .models import Restaurant
 
 User = get_user_model()
 
+# Utility function to get restaurant for a user
+def get_restaurant_for_user(user):
+    """Get restaurant for a user based on their role"""
+    restaurant = None
+    
+    # Check if user has a valid role
+    if not hasattr(user, 'role'):
+        return None
+    
+    # Check if user is restaurant owner
+    if user.role == 'restaurant_owner':
+        # Restaurant owners should have their own restaurant
+        restaurant = Restaurant.objects.filter(owner=user).first()
+        
+    # Check if user is admin or staff
+    elif user.role in ['admin', 'staff']:
+        # First check if the admin is also an owner
+        owner_restaurant = Restaurant.objects.filter(owner=user).first()
+        if owner_restaurant:
+            return owner_restaurant
+            
+        # Otherwise check if they're in the staff list
+        restaurant = Restaurant.objects.filter(staff=user).first()
+    
+    return restaurant
+
 # restaurants/views.py
 @login_required
 def user_management(request):
@@ -21,8 +47,8 @@ def user_management(request):
     # Tambahkan print statement untuk debugging
     print("USER MANAGEMENT VIEW CALLED")
     
-    # Pastikan user adalah admin (owner) dari restaurant
-    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+    # Pastikan user adalah restaurant owner
+    if not hasattr(request.user, 'role') or request.user.role != 'restaurant_owner':
         messages.error(request, "You don't have permission to access this page.")
         return redirect('restaurants:dashboard')
     
@@ -34,11 +60,10 @@ def user_management(request):
     
     # Get tab yang aktif
     tab = request.GET.get('tab', 'admins')
-    
-    # Ambil admin users (selain user saat ini)
+      # Ambil admin users (selain user saat ini)
     admin_users = User.objects.filter(
         role='admin'
-    ).exclude(id=request.user.id)
+    )
     
     # Ambil staff users dari relasi ManyToMany
     staff_users = restaurant.staff.all()
@@ -59,7 +84,7 @@ def add_user(request):
     if request.method != 'POST':
         return redirect('restaurants:user_management')
     
-    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+    if not hasattr(request.user, 'role') or request.user.role != 'restaurant_owner':
         messages.error(request, "You don't have permission to add users.")
         return redirect('restaurants:dashboard')
     
@@ -110,16 +135,9 @@ def add_user(request):
         role=role,
         phone=phone
     )
-    
-    # Hubungkan user dengan restaurant
-    if role == 'admin':
-        # Untuk admin user, buat relasi dengan restaurant sebagai owner
-        # Jika dalam model saat ini hanya ada satu owner, mungkin perlu dipertimbangkan lagi
-        # Alternatifnya, kita bisa membuat relasi baru untuk admin tambahan
-        restaurant.owner = user
-        restaurant.save()
-    elif role == 'staff':
-        # Untuk staff user, tambahkan ke restaurant staff
+      # Hubungkan user dengan restaurant
+    if role in ['admin', 'staff']:
+        # Untuk admin dan staff user, tambahkan ke restaurant staff
         restaurant.staff.add(user)
     
     messages.success(request, f"{role.title()} user {email} has been created successfully.")
@@ -131,7 +149,7 @@ def update_user(request, user_id):
     if request.method != 'POST':
         return redirect('restaurants:user_management')
     
-    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+    if not hasattr(request.user, 'role') or request.user.role != 'restaurant_owner':
         messages.error(request, "You don't have permission to update users.")
         return redirect('restaurants:dashboard')
     
@@ -187,7 +205,7 @@ def deactivate_user(request, user_id):
     if request.method != 'POST':
         return redirect('restaurants:user_management')
     
-    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+    if not hasattr(request.user, 'role') or request.user.role != 'restaurant_owner':
         messages.error(request, "You don't have permission to deactivate users.")
         return redirect('restaurants:dashboard')
     
@@ -207,9 +225,7 @@ def deactivate_user(request, user_id):
     
     # Periksa apakah user terhubung dengan restaurant ini
     is_associated = False
-    if user_to_deactivate.role == 'admin' and restaurant.owner == user_to_deactivate:
-        is_associated = True
-    elif user_to_deactivate.role == 'staff' and restaurant.staff.filter(id=user_to_deactivate.id).exists():
+    if user_to_deactivate.role in ['admin', 'staff'] and restaurant.staff.filter(id=user_to_deactivate.id).exists():
         is_associated = True
     
     if not is_associated:
@@ -220,18 +236,19 @@ def deactivate_user(request, user_id):
     user_to_deactivate.is_active = False
     user_to_deactivate.save()
     
-    # Jika user adalah staff, hapus dari restaurant
-    if user_to_deactivate.role == 'staff':
+    # Remove from restaurant staff list
+    if user_to_deactivate.role in ['admin', 'staff']:
         restaurant.staff.remove(user_to_deactivate)
     
     messages.success(request, f"User {user_to_deactivate.email} has been deactivated.")
     return redirect('restaurants:user_management')
 @login_required
 def dashboard(request):
-    """Dashboard view for restaurant owners"""
-    # Cek apakah user memiliki restoran
-    try:
-        restaurant = Restaurant.objects.get(owner=request.user)
+    """Dashboard view for restaurant owners & admins"""
+    # Use the utility function to get restaurant for user
+    restaurant = get_restaurant_for_user(request.user)
+    
+    if restaurant:
         tables = Table.objects.filter(restaurant=restaurant)
         categories = MenuCategory.objects.filter(restaurant=restaurant)
         
@@ -242,29 +259,57 @@ def dashboard(request):
             'menu_item_count': MenuItem.objects.filter(category__restaurant=restaurant).count(),
         }
         return render(request, 'restaurants/dashboard.html', context)
-    except Restaurant.DoesNotExist:
-        # Jika user belum memiliki restoran, redirect ke halaman create restaurant
-        return redirect('restaurants:create_restaurant')
+    else:
+        # Check if user has permission to create a restaurant
+        if hasattr(request.user, 'role') and request.user.role in ['restaurant_owner', 'admin']:
+            # Redirect to create restaurant page with a message
+            messages.info(request, "You need to create a restaurant first.")
+            return redirect('restaurants:create_restaurant')
+        else:
+            # For users who shouldn't create restaurants
+            messages.error(request, "You don't have a restaurant assigned to your account. Please contact the administrator.")
+            return redirect('account_login')
         
 @login_required
 def menu_categories(request):
     """View untuk mengelola kategori menu"""
-    try:
-        restaurant = Restaurant.objects.get(owner=request.user)
+    # Check if user has permission to manage menu categories
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu categories.")
+        return redirect('restaurants:dashboard')
+    
+    # Use the utility function to get restaurant for user
+    restaurant = get_restaurant_for_user(request.user)
+    
+    if restaurant:
         categories = MenuCategory.objects.filter(restaurant=restaurant)
         context = {
             'restaurant': restaurant,
             'categories': categories,
         }
         return render(request, 'restaurants/menu_categories.html', context)
-    except Restaurant.DoesNotExist:
-        return redirect('restaurants:create_restaurant')
+    else:
+        # For users who should be able to create a restaurant
+        if hasattr(request.user, 'role') and request.user.role in ['restaurant_owner', 'admin']:
+            messages.info(request, "You need to create a restaurant first.")
+            return redirect('restaurants:create_restaurant')
+        else:
+            # For users who shouldn't create restaurants
+            messages.error(request, "You don't have a restaurant assigned to your account. Please contact the administrator.")
+            return redirect('restaurants:dashboard')
 
 @login_required
 def menu_items(request):
     """View untuk mengelola item menu"""
-    try:
-        restaurant = Restaurant.objects.get(owner=request.user)
+    # Check if user has permission to manage menu items
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu items.")
+        return redirect('restaurants:dashboard')
+    
+    # Use the utility function to get restaurant for user
+    restaurant = get_restaurant_for_user(request.user)
+    
+    if restaurant:
         categories = MenuCategory.objects.filter(restaurant=restaurant)
         menu_items = MenuItem.objects.filter(category__restaurant=restaurant)
         context = {
@@ -273,22 +318,43 @@ def menu_items(request):
             'menu_items': menu_items,
         }
         return render(request, 'restaurants/menu_items.html', context)
-    except Restaurant.DoesNotExist:
-        return redirect('restaurants:create_restaurant')
+    else:
+        # For users who should be able to create a restaurant
+        if hasattr(request.user, 'role') and request.user.role in ['restaurant_owner', 'admin']:
+            messages.info(request, "You need to create a restaurant first.")
+            return redirect('restaurants:create_restaurant')
+        else:
+            # For users who shouldn't create restaurants
+            messages.error(request, "You don't have a restaurant assigned to your account. Please contact the administrator.")
+            return redirect('restaurants:dashboard')
 
 @login_required
 def tables(request):
     """View untuk mengelola meja"""
-    try:
-        restaurant = Restaurant.objects.get(owner=request.user)
+    # Check if user has permission to manage tables
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage tables.")
+        return redirect('restaurants:dashboard')
+    
+    # Use the utility function to get restaurant for user
+    restaurant = get_restaurant_for_user(request.user)
+    
+    if restaurant:
         tables = Table.objects.filter(restaurant=restaurant)
         context = {
             'restaurant': restaurant,
             'tables': tables,
         }
         return render(request, 'restaurants/tables.html', context)
-    except Restaurant.DoesNotExist:
-        return redirect('restaurants:create_restaurant')
+    else:
+        # For users who should be able to create a restaurant
+        if hasattr(request.user, 'role') and request.user.role in ['restaurant_owner', 'admin']:
+            messages.info(request, "You need to create a restaurant first.")
+            return redirect('restaurants:create_restaurant')
+        else:
+            # For users who shouldn't create restaurants
+            messages.error(request, "You don't have a restaurant assigned to your account. Please contact the administrator.")
+            return redirect('restaurants:dashboard')
 
 @login_required
 def create_restaurant(request):
@@ -300,6 +366,7 @@ def create_restaurant(request):
         address = request.POST.get('address', '')
         contact_number = request.POST.get('contact_number', '')
         
+        # Create the restaurant
         restaurant = Restaurant.objects.create(
             owner=request.user,
             name=name,
@@ -307,6 +374,11 @@ def create_restaurant(request):
             address=address,
             contact_number=contact_number
         )
+          # Set the user's role to restaurant_owner
+        if hasattr(request.user, 'role') and request.user.role in ['customer', 'admin']:
+            request.user.role = 'restaurant_owner'
+            request.user.save()
+            messages.success(request, f"Restaurant '{name}' created successfully!")
         return redirect('restaurants:dashboard')
     
     return render(request, 'restaurants/create_restaurant.html')
@@ -332,9 +404,23 @@ def generate_qr(request, table_id):
 @login_required
 def add_category(request):
     """Add a new menu category"""
+    # Check if user has permission to manage menu categories
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu categories.")
+        return redirect('restaurants:dashboard')
+    
     if request.method == 'POST':
         try:
-            restaurant = Restaurant.objects.get(owner=request.user)
+            # Use the utility function to get restaurant for user
+            restaurant = get_restaurant_for_user(request.user)
+            if not restaurant:
+                if request.user.role == 'restaurant_owner':
+                    messages.info(request, "You need to create a restaurant first.")
+                    return redirect('restaurants:create_restaurant')
+                else:
+                    messages.error(request, "No restaurant found for your account.")
+                    return redirect('restaurants:dashboard')
+                
             name = request.POST.get('name')
             description = request.POST.get('description', '')
             display_order = request.POST.get('display_order', 0)
@@ -348,19 +434,29 @@ def add_category(request):
                 active=active
             )
             
-            # Could add message here
-            
+            messages.success(request, f"Category {name} has been created successfully.")
             return redirect('restaurants:menu_categories')
-        except Restaurant.DoesNotExist:
-            return redirect('restaurants:create_restaurant')
+        except Exception as e:
+            messages.error(request, f"Error creating category: {str(e)}")
+            return redirect('restaurants:menu_categories')
     return redirect('restaurants:menu_categories')
 
 @login_required
 def edit_category(request):
     """Edit an existing menu category"""
+    # Check if user has permission to manage menu categories
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu categories.")
+        return redirect('restaurants:dashboard')
+    
     if request.method == 'POST':
         try:
-            restaurant = Restaurant.objects.get(owner=request.user)
+            # Use the utility function to get restaurant for user
+            restaurant = get_restaurant_for_user(request.user)
+            if not restaurant:
+                messages.error(request, "No restaurant found for your account.")
+                return redirect('restaurants:dashboard')
+                
             category_id = request.POST.get('category_id')
             category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
             
@@ -370,38 +466,57 @@ def edit_category(request):
             category.active = 'active' in request.POST
             category.save()
             
-            # Could add message here
-            
+            messages.success(request, f"Category {category.name} has been updated successfully.")
             return redirect('restaurants:menu_categories')
-        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
-            # Could add error message here
-            pass
+        except (MenuCategory.DoesNotExist) as e:
+            messages.error(request, f"Error updating category: {str(e)}")
+            return redirect('restaurants:menu_categories')
     return redirect('restaurants:menu_categories')
 
 @login_required
 def delete_category(request):
     """Delete a menu category"""
+    # Check if user has permission to manage menu categories
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu categories.")
+        return redirect('restaurants:dashboard')
+    
     if request.method == 'POST':
         try:
-            restaurant = Restaurant.objects.get(owner=request.user)
+            # Use the utility function to get restaurant for user
+            restaurant = get_restaurant_for_user(request.user)
+            if not restaurant:
+                messages.error(request, "No restaurant found for your account.")
+                return redirect('restaurants:dashboard')
+                
             category_id = request.POST.get('category_id')
             category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
+            category_name = category.name
             category.delete()
             
-            # Could add message here
-            
+            messages.success(request, f"Category {category_name} has been deleted successfully.")
             return redirect('restaurants:menu_categories')
-        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
-            # Could add error message here
-            pass
+        except (MenuCategory.DoesNotExist) as e:
+            messages.error(request, f"Error deleting category: {str(e)}")
+            return redirect('restaurants:menu_categories')
     return redirect('restaurants:menu_categories')
 
 @login_required
 def add_menu_item(request):
     """Add a new menu item"""
+    # Check if user has permission to manage menu items
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu items.")
+        return redirect('restaurants:dashboard')
+    
     if request.method == 'POST':
         try:
-            restaurant = Restaurant.objects.get(owner=request.user)
+            # Use the utility function to get restaurant for user
+            restaurant = get_restaurant_for_user(request.user)
+            if not restaurant:
+                messages.error(request, "No restaurant found for your account.")
+                return redirect('restaurants:dashboard')
+                
             category_id = request.POST.get('category')
             category = MenuCategory.objects.get(id=category_id, restaurant=restaurant)
             
@@ -419,20 +534,29 @@ def add_menu_item(request):
             if 'image' in request.FILES:
                 item.save_image_base64(request.FILES['image'])
             
-            # Could add success message here
-            
+            messages.success(request, f"Menu item {item.name} has been created successfully.")
             return redirect('restaurants:menu_items')
-        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist):
-            # Could add error message here
-            pass
+        except Exception as e:
+            messages.error(request, f"Error creating menu item: {str(e)}")
+            return redirect('restaurants:menu_items')
     return redirect('restaurants:menu_items')
 
 @login_required
 def edit_menu_item(request):
     """Edit an existing menu item"""
+    # Check if user has permission to manage menu items
+    if not hasattr(request.user, 'role') or request.user.role == 'staff':
+        messages.error(request, "You don't have permission to manage menu items.")
+        return redirect('restaurants:dashboard')
+    
     if request.method == 'POST':
         try:
-            restaurant = Restaurant.objects.get(owner=request.user)
+            # Use the utility function to get restaurant for user
+            restaurant = get_restaurant_for_user(request.user)
+            if not restaurant:
+                messages.error(request, "No restaurant found for your account.")
+                return redirect('restaurants:dashboard')
+                
             item_id = request.POST.get('item_id')
             category_id = request.POST.get('category')
             
@@ -452,12 +576,11 @@ def edit_menu_item(request):
             if 'image' in request.FILES:
                 item.save_image_base64(request.FILES['image'])
             
-            # Could add success message here
-            
+            messages.success(request, f"Menu item {item.name} has been updated successfully.")
             return redirect('restaurants:menu_items')
-        except (Restaurant.DoesNotExist, MenuCategory.DoesNotExist, MenuItem.DoesNotExist):
-            # Could add error message here
-            pass
+        except Exception as e:
+            messages.error(request, f"Error updating menu item: {str(e)}")
+            return redirect('restaurants:menu_items')
     return redirect('restaurants:menu_items')
 
 @login_required
@@ -626,4 +749,4 @@ def generate_qr(request, table_id):
     except Table.DoesNotExist:
         messages.error(request, "Table not found.")
         return redirect('restaurants:tables')
-    
+

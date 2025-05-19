@@ -4,7 +4,8 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     ROLE_CHOICES = [
-        ('admin', 'Admin/Owner'),
+        ('restaurant_owner', 'Restaurant Owner'),
+        ('admin', 'Admin'),
         ('staff', 'Staff'),
         ('customer', 'Customer'),
     ]
@@ -16,6 +17,9 @@ class User(AbstractUser):
     verification_token = models.CharField(max_length=100, blank=True, null=True)
     
     def is_restaurant_owner(self):
+        return self.role == 'restaurant_owner'
+    
+    def is_admin(self):
         return self.role == 'admin'
     
     def is_staff_member(self):
