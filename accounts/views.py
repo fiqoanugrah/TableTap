@@ -1,6 +1,3 @@
-"""
-Views for the accounts app
-"""
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.contrib import messages
@@ -57,7 +54,7 @@ def home_view(request):
 def landing_view(request):
     """Simple landing page view with check for authenticated users"""
     # If the user is authenticated but doesn't have a restaurant
-    # We won't force redirect them here - this breaks the loop
+    # won't force redirect them here - this breaks the loop
     # Just showing different content based on authentication status
     is_authenticated = request.user.is_authenticated
     
