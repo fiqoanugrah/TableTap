@@ -1,7 +1,12 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}Tables & QR Codes - {{ restaurant.name }}{% endblock %}
+{% block title %}Tables & QR Codes - {{ restaurant.name }}{%                                             <a href="{% url 'restaurants:generate_qr' table.id %}?download=1" class="btn btn-primary btn-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                Download QR
+                                            </a>ck %}
 
 {% block body_class %}bg-gray-100{% endblock %}
 
@@ -111,9 +116,8 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
                                                 Generate QR
-                                            </a>
-                                        {% else %}
-                                            <a href="{% url 'restaurants:generate_qr' table.id %}" class="btn btn-primary btn-sm">
+                                            </a>                                        {% else %}
+                                            <a href="{% url 'restaurants:generate_qr' table.id %}?download=1" class="btn btn-primary btn-sm">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                                 </svg>
@@ -122,14 +126,12 @@
                                         {% endif %}
                                     </div>
                                     <div class="flex space-x-2">
-                                        <button class="btn btn-outline btn-sm" 
-                                                onclick="editTable('{{ table.id }}', '{{ table.table_number }}', {{ table.seats }}, '{{ table.status }}')">
+                                        <button class="btn btn-outline btn-sm" onclick="window.editTable('{{ table.id }}', '{{ table.table_number }}', '{{ table.seats }}', '{{ table.status }}')">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                         </button>
-                                        <button class="btn btn-error btn-sm" 
-                                                onclick="confirmDeleteTable('{{ table.id }}', '{{ table.table_number }}')">
+                                        <button class="btn btn-error btn-sm" onclick="window.confirmDeleteTable('{{ table.id }}', '{{ table.table_number }}')">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
@@ -380,7 +382,8 @@
 
 <!-- JavaScript for modals and QR Code handling -->
 <script>
-function editTable(id, tableNumber, seats, status) {
+// Ensure the functions are properly defined in the global scope
+window.editTable = function(id, tableNumber, seats, status) {
     document.getElementById('edit_table_id').value = id;
     document.getElementById('edit_table_number').value = tableNumber;
     document.getElementById('edit_seats').value = seats;
@@ -388,30 +391,27 @@ function editTable(id, tableNumber, seats, status) {
     document.getElementById('edit-table-modal').showModal();
 }
 
-function confirmDeleteTable(id, tableNumber) {
+window.confirmDeleteTable = function(id, tableNumber) {
     document.getElementById('delete_table_id').value = id;
     document.getElementById('delete-table-number').textContent = tableNumber;
     document.getElementById('delete-table-modal').showModal();
 }
 
-function showQRCode(tableNumber, qrCodeData, qrCodeUrl) {
+window.showQRCode = function(tableNumber, qrCodeData, qrCodeUrl) {
     document.getElementById('qr-table-number').textContent = tableNumber;
     document.getElementById('qr-code-image').src = 'data:image/png;base64,' + qrCodeData;
     document.getElementById('qr-code-url').textContent = qrCodeUrl;
-    
     // Set download link
     var downloadLink = document.getElementById('download-qr-link');
     downloadLink.href = 'data:image/png;base64,' + qrCodeData;
     downloadLink.download = 'table-' + tableNumber + '-qr-code.png';
-    
     document.getElementById('qr-code-modal').showModal();
 }
 
-function printQRCode() {
+window.printQRCode = function() {
     var printWindow = window.open('', '_blank');
     var qrImage = document.getElementById('qr-code-image').src;
     var tableNumber = document.getElementById('qr-table-number').textContent;
-    
     printWindow.document.write(`
         <html>
         <head>
@@ -433,11 +433,29 @@ function printQRCode() {
             </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
-            </script>
+            <\/script>
         </body>
         </html>
     `);
     printWindow.document.close();
+}
+
+function editTable(tableId, tableNumber, seats, status) {
+    // Populate your edit modal fields with the table data
+    document.getElementById('edit-table-id').value = tableId;
+    document.getElementById('edit-table-number').value = tableNumber;
+    document.getElementById('edit-seats').value = seats;
+    document.getElementById('edit-status').value = status;
+    // Show the modal (adjust this to your modal library)
+    document.getElementById('editTableModal').style.display = 'block';
+}
+
+function confirmDeleteTable(tableId, tableNumber) {
+    // Set values for confirmation modal
+    document.getElementById('delete-table-id').value = tableId;
+    document.getElementById('delete-table-number').innerText = tableNumber;
+    // Show the modal (adjust this to your modal library)
+    document.getElementById('deleteTableModal').style.display = 'block';
 }
 </script>
 

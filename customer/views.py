@@ -217,10 +217,23 @@ def remove_from_cart(request, restaurant_id, table_id, item_id):
     # Save updated cart to session
     request.session[cart_key] = restaurant_cart
     request.session.modified = True
-    
+
+    # Calculate updated cart total and item count for AJAX UI updates
+    total = 0
+    item_count = 0
+    for item_id, quantity in restaurant_cart.items():
+        try:
+            menu_item = MenuItem.objects.get(id=int(item_id))
+            total += menu_item.price * quantity
+            item_count += quantity
+        except MenuItem.DoesNotExist:
+            continue
+
     # Return success response for AJAX
     return JsonResponse({
         'status': 'success',
         'message': 'Item removed from cart',
-        'cart_contents': restaurant_cart
+        'cart_contents': restaurant_cart,
+        'cart_total': total,
+        'cart_item_count': item_count
     })
