@@ -224,8 +224,8 @@ function removeCartItem(itemId) {
         const formData = new FormData();
         formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
         
-        // Send AJAX request
-        fetch('{% url "customer:remove_from_cart" restaurant.id table.id 0 %}'.replace('0', itemId), {
+        // Send AJAX request to /menu/remove-from-cart/... (match Django URL configuration)
+        fetch('/menu/remove-from-cart/{{ restaurant.id }}/{{ table.id }}/' + itemId + '/', {
             method: 'POST',
             body: formData,
             headers: {

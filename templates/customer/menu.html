@@ -248,9 +248,9 @@ function showAddToCartModal(itemId, itemName, itemPrice) {
     // Set item name in modal
     document.getElementById('modal-item-name').textContent = itemName;
     
-    // Set form action
+    // Set form action to the correct URL (with /menu/ prefix)
     document.getElementById('add-to-cart-form').action = 
-        "{% url 'customer:add_to_cart' restaurant_id=restaurant.id table_id=table.id item_id=0 %}".replace('0', itemId);
+        "/menu/add-to-cart/{{ restaurant.id }}/{{ table.id }}/" + itemId + "/";
     
     // Show modal
     document.getElementById('add-to-cart-modal').showModal();
