@@ -250,7 +250,7 @@ function showAddToCartModal(itemId, itemName, itemPrice) {
     
     // Set form action
     document.getElementById('add-to-cart-form').action = 
-        "{% url 'customer:add_to_cart' restaurant_id=restaurant.id table_id=table.id menu_item_id=0 %}".replace('0', itemId);
+        "{% url 'customer:add_to_cart' restaurant_id=restaurant.id table_id=table.id item_id=0 %}".replace('0', itemId);
     
     // Show modal
     document.getElementById('add-to-cart-modal').showModal();

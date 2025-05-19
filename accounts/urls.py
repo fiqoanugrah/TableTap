@@ -1,10 +1,11 @@
+"""
+URLs for the accounts app
+"""
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from . import views
 
-app_name = 'accounts'
-
+# No namespace here as it might conflict with allauth
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('login/', views.CustomLoginView.as_view(), name='login'),
+    path('change-role/', views.change_role, name='change_role'),
 ]

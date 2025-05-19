@@ -1,103 +1,57 @@
-from django.shortcuts import render, redirect, get_object_or_404
+"""
+Views for the customer app
+"""
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from restaurants.models import Restaurant, Table, MenuCategory, MenuItem
+from django.contrib import messages
+from django.views.decorators.http import require_POST
+from restaurants.models import Restaurant, Table, MenuItem, MenuCategory
 from orders.models import Order, OrderItem
-from django.db.models import Sum
 
-def menu(request, restaurant_id, table_id):
-    """View menu for a restaurant table"""
+def menu_view(request, restaurant_id, table_id):
+    """Display menu for customers"""
     restaurant = get_object_or_404(Restaurant, id=restaurant_id)
     table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
     
-    # Get all active categories and their items
     categories = MenuCategory.objects.filter(restaurant=restaurant, active=True)
+    menu_items = {}
     
-    # Check for active orders for this table
-    # Active orders are those with status not in 'completed' or 'cancelled'
-    active_orders = Order.objects.filter(
-        restaurant=restaurant,
-        table=table,
-        status__in=['pending', 'preparing', 'ready']
-    ).order_by('-created_at')
+    for category in categories:
+        menu_items[category] = MenuItem.objects.filter(category=category, is_available=True)
     
     context = {
         'restaurant': restaurant,
         'table': table,
         'categories': categories,
-        'active_orders': active_orders,
+        'menu_items': menu_items
     }
+    
     return render(request, 'customer/menu.html', context)
 
-def add_to_cart(request, restaurant_id, table_id, menu_item_id):
-    """Add item to cart (stored in session)"""
-    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
-    table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
-    menu_item = get_object_or_404(MenuItem, id=menu_item_id)
-    
-    if request.method == 'POST':
-        quantity = int(request.POST.get('quantity', 1))
-        notes = request.POST.get('notes', '')
-        
-        # Initialize cart in session if it doesn't exist
-        cart_key = f'cart_{restaurant_id}_{table_id}'
-        if cart_key not in request.session:
-            request.session[cart_key] = []
-            
-        # Check if item already in cart
-        cart = request.session[cart_key]
-        found = False
-        for item in cart:
-            if int(item.get('menu_item_id')) == menu_item_id:
-                item['quantity'] += quantity
-                found = True
-                break
-                
-        if not found:
-            cart.append({
-                'menu_item_id': menu_item_id,
-                'name': menu_item.name,
-                'price': str(menu_item.price),
-                'quantity': quantity,
-                'notes': notes
-            })
-            
-        request.session[cart_key] = cart
-        request.session.modified = True
-        
-        # Calculate cart count
-        cart_count = sum(item.get('quantity', 0) for item in cart)
-        
-        # Calculate new totals
-        subtotal = sum(float(item.get('price', 0)) * item.get('quantity', 0) for item in cart)
-        total = subtotal  # No service fee
-        
-        # Check if this is an AJAX request
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'cart_count': cart_count,
-                'subtotal': f"{subtotal:.2f}",
-                'total': f"{total:.2f}",
-                'message': f'{quantity} item(s) added to cart'
-            })
-        
-        # Regular form submission
-        return redirect('customer:menu', restaurant_id=restaurant_id, table_id=table_id)
-        
-    # If not POST, redirect to menu
-    return redirect('customer:menu', restaurant_id=restaurant_id, table_id=table_id)
-
-def cart(request, restaurant_id, table_id):
-    """View cart contents"""
+def cart_view(request, restaurant_id, table_id):
+    """Display cart for customer"""
     restaurant = get_object_or_404(Restaurant, id=restaurant_id)
     table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
     
-    # Get cart from session
+    # Use the same cart key format
     cart_key = f'cart_{restaurant_id}_{table_id}'
-    cart_items = request.session.get(cart_key, [])
+    restaurant_cart = request.session.get(cart_key, {})
     
-    # Calculate total
-    total = sum(float(item['price']) * item['quantity'] for item in cart_items)
+    cart_items = []
+    total = 0
+    
+    for item_id, quantity in restaurant_cart.items():
+        menu_item = get_object_or_404(MenuItem, id=int(item_id))
+        subtotal = menu_item.price * quantity
+        total += subtotal
+        
+        cart_items.append({
+            'id': menu_item.id,
+            'name': menu_item.name,
+            'price': menu_item.price,
+            'quantity': quantity,
+            'subtotal': subtotal
+        })
     
     context = {
         'restaurant': restaurant,
@@ -105,163 +59,168 @@ def cart(request, restaurant_id, table_id):
         'cart_items': cart_items,
         'total': total
     }
+    
     return render(request, 'customer/cart.html', context)
 
-# customer/views.py
+@require_POST
+def add_to_cart(request, restaurant_id, table_id, item_id):
+    """Add item to cart"""
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+    table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
+    menu_item = get_object_or_404(MenuItem, id=item_id, category__restaurant=restaurant)
+    
+    # Get or initialize cart
+    cart = request.session.get('cart', {})
+    
+    # Use a cart key specific to this restaurant and table
+    cart_key = f'cart_{restaurant_id}_{table_id}'
+    restaurant_cart = request.session.get(cart_key, {})
+    
+    # Add item to cart
+    item_id_str = str(item_id)
+    restaurant_cart[item_id_str] = restaurant_cart.get(item_id_str, 0) + 1
+    
+    # Save cart to session
+    request.session[cart_key] = restaurant_cart
+    request.session.modified = True
+    
+    # Return more detailed information for debugging
+    return JsonResponse({
+        'status': 'success', 
+        'message': f'{menu_item.name} added to cart',
+        'cart_key': cart_key,
+        'cart_contents': restaurant_cart,
+        'item_added': item_id_str
+    })
+
+@require_POST
+def update_cart(request, restaurant_id, table_id, item_id):
+    """Update cart item quantity"""
+    quantity = int(request.POST.get('quantity', 1))
+    
+    # Use the same cart key format
+    cart_key = f'cart_{restaurant_id}_{table_id}'
+    restaurant_cart = request.session.get(cart_key, {})
+    
+    # Update quantity or remove if quantity is 0
+    item_id_str = str(item_id)
+    if quantity > 0:
+        restaurant_cart[item_id_str] = quantity
+    else:
+        if item_id_str in restaurant_cart:
+            del restaurant_cart[item_id_str]
+    
+    # Save cart to session
+    request.session[cart_key] = restaurant_cart
+    request.session.modified = True
+    
+    return redirect('cart_view', restaurant_id=restaurant_id, table_id=table_id)
+
+@require_POST
 def place_order(request, restaurant_id, table_id):
-    """Place an order from cart"""
-    if request.method == 'POST':
-        restaurant = get_object_or_404(Restaurant, id=restaurant_id)
-        table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
+    """Place an order"""
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+    table = get_object_or_404(Table, id=table_id, restaurant=restaurant)
+    
+    # Use the same cart key format
+    cart_key = f'cart_{restaurant_id}_{table_id}'
+    restaurant_cart = request.session.get(cart_key, {})
+    
+    if not restaurant_cart:
+        messages.error(request, 'Your cart is empty')
+        return redirect('cart_view', restaurant_id=restaurant_id, table_id=table_id)
+    
+    # Calculate total
+    total = 0
+    for item_id, quantity in restaurant_cart.items():
+        menu_item = get_object_or_404(MenuItem, id=int(item_id))
+        total += menu_item.price * quantity
+    
+    # Create order
+    order = Order.objects.create(
+        restaurant=restaurant,
+        table=table,
+        status='pending',
+        total_amount=total
+    )
+    
+    # Create order items
+    for item_id, quantity in restaurant_cart.items():
+        menu_item = get_object_or_404(MenuItem, id=int(item_id))
+        subtotal = menu_item.price * quantity
         
-        # Get cart from session
-        cart_key = f'cart_{restaurant_id}_{table_id}'
-        cart_items = request.session.get(cart_key, [])
-        
-        if not cart_items:
-            return redirect('customer:menu', restaurant_id=restaurant_id, table_id=table_id)
-            
-        # Calculate total
-        total = sum(float(item['price']) * item['quantity'] for item in cart_items)
-        
-        # Create order
-        special_instructions = request.POST.get('special_instructions', '')
-        order = Order.objects.create(
-            restaurant=restaurant,
-            table=table,
-            status='pending',
-            special_instructions=special_instructions,
-            total_amount=total
+        OrderItem.objects.create(
+            order=order,
+            menu_item=menu_item,
+            quantity=quantity,
+            subtotal=subtotal
         )
-        
-        # Create order items
-        for item in cart_items:
-            menu_item = MenuItem.objects.get(id=item['menu_item_id'])
-            OrderItem.objects.create(
-                order=order,
-                menu_item=menu_item,
-                quantity=item['quantity'],
-                price=menu_item.price,
-                notes=item['notes']
-            )
-            
-        # Clear cart
-        request.session[cart_key] = []
-        request.session.modified = True
-        
-        # Redirect to order confirmation page instead of order status
-        return redirect('customer:order_confirmation', order_id=order.id)
-        
-    return redirect('customer:cart', restaurant_id=restaurant_id, table_id=table_id)
+    
+    # Clear cart
+    request.session[cart_key] = {}
+    request.session.modified = True
+    
+    # Redirect to order confirmation
+    return redirect('order_confirmation', order_id=order.id)
 
 def order_status(request, order_id):
-    """View order status"""
+    """Display order status"""
     order = get_object_or_404(Order, id=order_id)
+    restaurant = order.restaurant
+    table = order.table
+    order_items = OrderItem.objects.filter(order=order)
     
     context = {
         'order': order,
-        'order_items': order.items.all()
+        'restaurant': restaurant,
+        'table': table,
+        'order_items': order_items
     }
+    
     return render(request, 'customer/order_status.html', context)
 
-def update_cart_item(request, restaurant_id, table_id, menu_item_id):
-    """Update quantity of an item in cart (AJAX)"""
-    if request.method == 'POST':
-        # Get cart from session
-        cart_key = f'cart_{restaurant_id}_{table_id}'
-        cart_items = request.session.get(cart_key, [])
-        
-        # Get new quantity from POST
-        try:
-            quantity = int(request.POST.get('quantity', 1))
-            if quantity < 1:
-                return JsonResponse({'success': False, 'error': 'Quantity must be at least 1'})
-        except ValueError:
-            return JsonResponse({'success': False, 'error': 'Invalid quantity'})
-        
-        # Update the item quantity
-        updated = False
-        for item in cart_items:
-            if int(item.get('menu_item_id')) == menu_item_id:
-                item['quantity'] = quantity
-                updated = True
-                break
-        
-        if not updated:
-            return JsonResponse({'success': False, 'error': 'Item not found in cart'})
-        
-        # Update session
-        request.session[cart_key] = cart_items
-        request.session.modified = True
-        
-        # Calculate new totals
-        subtotal = sum(float(item['price']) * item['quantity'] for item in cart_items)
-        total = subtotal  # No service fee
-        cart_count = sum(item['quantity'] for item in cart_items)
-        
-        # Get the updated item's total
-        item_total = 0
-        for item in cart_items:
-            if int(item.get('menu_item_id')) == menu_item_id:
-                item_total = float(item['price']) * item['quantity']
-                break
-        
-        # Return updated values
-        return JsonResponse({
-            'success': True,
-            'subtotal': f"{subtotal:.2f}",
-            'total': f"{total:.2f}",
-            'item_total': f"{item_total:.2f}",
-            'cart_count': cart_count,
-            'quantity': quantity
-        })
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-# customer/views.py
-# Add this new view
 def order_confirmation(request, order_id):
-    """Order confirmation page"""
+    """Display order confirmation"""
     order = get_object_or_404(Order, id=order_id)
+    restaurant = order.restaurant
+    table = order.table
+    order_items = OrderItem.objects.filter(order=order)
     
     context = {
         'order': order,
-        'restaurant': order.restaurant,
-        'table': order.table
+        'restaurant': restaurant,
+        'table': table,
+        'order_items': order_items
     }
+    
     return render(request, 'customer/order_confirmation.html', context)
 
-def remove_from_cart(request, restaurant_id, table_id, menu_item_id):
-    """Remove item from cart (AJAX)"""
-    if request.method == 'POST':
-        # Get cart from session
-        cart_key = f'cart_{restaurant_id}_{table_id}'
-        cart_items = request.session.get(cart_key, [])
-        
-        # Create a new cart without the item to be removed
-        updated_cart = []
-        for item in cart_items:
-            if int(item.get('menu_item_id')) != menu_item_id:
-                updated_cart.append(item)
-        
-        # Update session
-        request.session[cart_key] = updated_cart
-        request.session.modified = True
-        
-        # Calculate new totals
-        subtotal = sum(float(item['price']) * item['quantity'] for item in updated_cart)
-        total = subtotal  # No service fee
-        cart_count = sum(item['quantity'] for item in updated_cart)
-        
-        # Return updated values
-        return JsonResponse({
-            'success': True,
-            'subtotal': f"{subtotal:.2f}",
-            'total': f"{total:.2f}",
-            'cart_count': cart_count,
-            'cart_empty': len(updated_cart) == 0
-        })
+def table_entry(request, table_code):
+    """Entry point for QR code scanning"""
+    table = get_object_or_404(Table, qr_code=table_code)
+    restaurant = table.restaurant
     
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    return redirect('customer:menu_view', restaurant_id=restaurant.id, table_id=table.id)
 
+@require_POST
+def remove_from_cart(request, restaurant_id, table_id, item_id):
+    """Remove item from cart"""
+    # Use the same cart key format as in other views
+    cart_key = f'cart_{restaurant_id}_{table_id}'
+    restaurant_cart = request.session.get(cart_key, {})
+    
+    # Remove the item if it exists
+    item_id_str = str(item_id)
+    if item_id_str in restaurant_cart:
+        del restaurant_cart[item_id_str]
+        
+    # Save updated cart to session
+    request.session[cart_key] = restaurant_cart
+    request.session.modified = True
+    
+    # Return success response for AJAX
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Item removed from cart',
+        'cart_contents': restaurant_cart
+    })

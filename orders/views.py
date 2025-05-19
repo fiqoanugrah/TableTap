@@ -1,38 +1,64 @@
-# orders/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Count
+from django.http import HttpResponse
 from .models import Order
 from restaurants.models import Restaurant
 
 @login_required
 def dashboard(request):
     """Staff dashboard view"""
-    # Get the restaurant for the logged-in user
-    restaurant = None
-    if hasattr(request.user, 'restaurant'):
-        restaurant = request.user.restaurant
-    else:
-        # If no restaurant is associated, redirect to a relevant page
-        messages.error(request, "You don't have a restaurant associated with your account.")
-        return redirect('restaurants:dashboard')  # Or another appropriate page
+    # Debug info
+    print("ORDERS DASHBOARD CALLED")
+    print(f"User: {request.user}, Role: {getattr(request.user, 'role', 'unknown')}")
     
-    # Count orders by status
+    # Verifikasi user adalah admin atau staff
+    if not hasattr(request.user, 'role') or (request.user.role != 'admin' and request.user.role != 'staff'):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('account_login')
+    
+    # Mendapatkan restaurant berdasarkan peran user
+    restaurant = None
+    
+    try:
+        # Untuk admin/owner, cari restaurant yang dimiliki
+        if request.user.role == 'admin':
+            restaurant = Restaurant.objects.filter(owner=request.user).first()
+            print(f"Found restaurant for admin: {restaurant}")
+        # Untuk staff, cari restaurant tempat mereka bekerja
+        elif request.user.role == 'staff':
+            # Pastikan ManyToMany relationship sudah dikonfigurasi
+            restaurant = Restaurant.objects.filter(staff=request.user).first()
+            print(f"Found restaurant for staff: {restaurant}")
+    except Exception as e:
+        print(f"Error finding restaurant: {e}")
+    
+    # Jika restaurant tidak ditemukan, ambil restaurant pertama untuk sementara (untuk testing)
+    if not restaurant:
+        restaurant = Restaurant.objects.first()
+        print(f"Using first restaurant as fallback: {restaurant}")
+    
+    if not restaurant:
+        messages.error(request, "No restaurant found. Please contact administrator.")
+        # PENTING: Jangan redirect ke restaurants:dashboard, ini penyebab loop
+        return HttpResponse("No restaurant found. Please contact administrator.")
+    
+    # Hitung pesanan berdasarkan status
     pending_count = Order.objects.filter(restaurant=restaurant, status='pending').count()
     preparing_count = Order.objects.filter(restaurant=restaurant, status='preparing').count()
     ready_count = Order.objects.filter(restaurant=restaurant, status='ready').count()
     
-    # Get today's orders count
+    # Ambil pesanan hari ini
     today = timezone.now().date()
     today_count = Order.objects.filter(
         restaurant=restaurant,
         created_at__date=today
     ).count()
     
-    # Get recent orders (last 10)
+    # Ambil pesanan terbaru (10 terakhir)
     recent_orders = Order.objects.filter(
         restaurant=restaurant
     ).order_by('-created_at')[:10]
@@ -47,18 +73,37 @@ def dashboard(request):
         'active_menu': 'dashboard'
     }
     
+    print("Rendering orders/dashboard.html")
     return render(request, 'orders/dashboard.html', context)
 
 @login_required
 def order_list(request):
     """Display a list of orders with filtering options"""
-    # Get the restaurant for the logged-in user
+    # Verifikasi user adalah admin atau staff
+    if not hasattr(request.user, 'role') or (request.user.role != 'admin' and request.user.role != 'staff'):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('account_login')
+    
+    # Mendapatkan restaurant berdasarkan peran user
     restaurant = None
-    if hasattr(request.user, 'restaurant'):
-        restaurant = request.user.restaurant
-    else:
-        messages.error(request, "You don't have a restaurant associated with your account.")
-        return redirect('restaurants:dashboard')  # Or another appropriate page
+    
+    try:
+        # Untuk admin/owner, cari restaurant yang dimiliki
+        if request.user.role == 'admin':
+            restaurant = Restaurant.objects.filter(owner=request.user).first()
+        # Untuk staff, cari restaurant tempat mereka bekerja
+        elif request.user.role == 'staff':
+            restaurant = Restaurant.objects.filter(staff=request.user).first()
+    except Exception as e:
+        print(f"Error finding restaurant: {e}")
+    
+    # Jika restaurant tidak ditemukan, ambil restaurant pertama untuk sementara
+    if not restaurant:
+        restaurant = Restaurant.objects.first()
+    
+    if not restaurant:
+        messages.error(request, "No restaurant found. Please contact administrator.")
+        return HttpResponse("No restaurant found. Please contact administrator.")
     
     # Get filter parameters
     status = request.GET.get('status', 'pending')
@@ -111,13 +156,31 @@ def order_list(request):
 @login_required
 def order_detail(request, order_id):
     """Display details for a specific order"""
-    # Get the restaurant for the logged-in user
+    # Verifikasi user adalah admin atau staff
+    if not hasattr(request.user, 'role') or (request.user.role != 'admin' and request.user.role != 'staff'):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('account_login')
+    
+    # Mendapatkan restaurant berdasarkan peran user
     restaurant = None
-    if hasattr(request.user, 'restaurant'):
-        restaurant = request.user.restaurant
-    else:
-        messages.error(request, "You don't have a restaurant associated with your account.")
-        return redirect('restaurants:dashboard')  # Or another appropriate page
+    
+    try:
+        # Untuk admin/owner, cari restaurant yang dimiliki
+        if request.user.role == 'admin':
+            restaurant = Restaurant.objects.filter(owner=request.user).first()
+        # Untuk staff, cari restaurant tempat mereka bekerja
+        elif request.user.role == 'staff':
+            restaurant = Restaurant.objects.filter(staff=request.user).first()
+    except Exception as e:
+        print(f"Error finding restaurant: {e}")
+    
+    # Jika restaurant tidak ditemukan, ambil restaurant pertama untuk sementara
+    if not restaurant:
+        restaurant = Restaurant.objects.first()
+    
+    if not restaurant:
+        messages.error(request, "No restaurant found. Please contact administrator.")
+        return HttpResponse("No restaurant found. Please contact administrator.")
     
     # Get the order, ensuring it belongs to the user's restaurant
     order = get_object_or_404(Order, id=order_id, restaurant=restaurant)
@@ -133,54 +196,73 @@ def order_detail(request, order_id):
     
     return render(request, 'orders/order_detail.html', context)
 
-# orders/views.py (lanjutan)
 @login_required
 def update_status(request, order_id):
     """Update the status of an order"""
-    if request.method == 'POST':
-        # Get the restaurant for the logged-in user
-        restaurant = None
-        if hasattr(request.user, 'restaurant'):
-            restaurant = request.user.restaurant
+    if request.method != 'POST':
+        return redirect('orders:order_detail', order_id=order_id)
+    
+    # Verifikasi user adalah admin atau staff
+    if not hasattr(request.user, 'role') or (request.user.role != 'admin' and request.user.role != 'staff'):
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('account_login')
+    
+    # Mendapatkan restaurant berdasarkan peran user
+    restaurant = None
+    
+    try:
+        # Untuk admin/owner, cari restaurant yang dimiliki
+        if request.user.role == 'admin':
+            restaurant = Restaurant.objects.filter(owner=request.user).first()
+        # Untuk staff, cari restaurant tempat mereka bekerja
+        elif request.user.role == 'staff':
+            restaurant = Restaurant.objects.filter(staff=request.user).first()
+    except Exception as e:
+        print(f"Error finding restaurant: {e}")
+    
+    # Jika restaurant tidak ditemukan, ambil restaurant pertama untuk sementara
+    if not restaurant:
+        restaurant = Restaurant.objects.first()
+    
+    if not restaurant:
+        messages.error(request, "No restaurant found. Please contact administrator.")
+        return HttpResponse("No restaurant found. Please contact administrator.")
+    
+    # Get the order, ensuring it belongs to the user's restaurant
+    order = get_object_or_404(Order, id=order_id, restaurant=restaurant)
+    
+    # Get the new status from the form
+    new_status = request.POST.get('status')
+    
+    # Ensure the status is valid
+    valid_statuses = [status[0] for status in Order.STATUS_CHOICES]
+    if new_status in valid_statuses:
+        # Update the order status
+        old_status = order.status
+        order.status = new_status
+        order.save()
+        
+        # Add a success message
+        status_display = dict(Order.STATUS_CHOICES)[new_status]
+        messages.success(request, f'Order #{order.id} has been updated to {status_display}.')
+        
+        # Get the referer URL to determine where to redirect
+        referer = request.META.get('HTTP_REFERER')
+        
+        # Redirect back to the order detail page or to the order list page if coming from there
+        if referer and 'order_detail' in referer:
+            return redirect('orders:order_detail', order_id=order.id)
         else:
-            messages.error(request, "You don't have a restaurant associated with your account.")
-            return redirect('restaurants:dashboard')  # Or another appropriate page
-        
-        # Get the order, ensuring it belongs to the user's restaurant
-        order = get_object_or_404(Order, id=order_id, restaurant=restaurant)
-        
-        # Get the new status from the form
-        new_status = request.POST.get('status')
-        
-        # Ensure the status is valid
-        valid_statuses = [status[0] for status in Order.STATUS_CHOICES]
-        if new_status in valid_statuses:
-            # Update the order status
-            old_status = order.status
-            order.status = new_status
-            order.save()
-            
-            # Add a success message
-            status_display = dict(Order.STATUS_CHOICES)[new_status]
-            messages.success(request, f'Order #{order.id} has been updated to {status_display}.')
-            
-            # Get the referer URL to determine where to redirect
-            referer = request.META.get('HTTP_REFERER')
-            
-            # Redirect back to the order detail page or to the order list page if coming from there
-            if 'order_detail' in referer:
-                return redirect('orders:order_detail', order_id=order.id)
-            else:
-                # Check if we should redirect to a specific status filter
-                if old_status != new_status:
-                    # If user changed the status, keep them on the same list
+            # Check if we should redirect to a specific status filter
+            if old_status != new_status:
+                # If user changed the status, keep them on the same list
+                if referer:
                     return redirect(referer)
                 else:
-                    # Otherwise, go to the list showing the new status
-                    return redirect('orders:order_list', status=new_status)
-        else:
-            messages.error(request, f'Invalid status: {new_status}')
-            return redirect('orders:order_detail', order_id=order.id)
-    
-    # If not a POST request, redirect to the order detail page
-    return redirect('orders:order_detail', order_id=order_id)
+                    return redirect('orders:order_list')
+            else:
+                # Otherwise, go to the list showing the new status
+                return redirect('orders:order_list')
+    else:
+        messages.error(request, f'Invalid status: {new_status}')
+        return redirect('orders:order_detail', order_id=order.id)

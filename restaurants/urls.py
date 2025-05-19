@@ -21,4 +21,9 @@ urlpatterns = [
     path('tables/edit/', views.edit_table, name='edit_table'),
     path('tables/delete/', views.delete_table, name='delete_table'),
     path('tables/generate-qr/<int:table_id>/', views.generate_qr, name='generate_qr'),
+    
+    path('users/', views.user_management, name='user_management'),
+    path('users/add/', views.add_user, name='add_user'),
+    path('users/<int:user_id>/update/', views.update_user, name='update_user'),
+    path('users/<int:user_id>/deactivate/', views.deactivate_user, name='deactivate_user'),
 ]

@@ -1,0 +1,93 @@
+<!-- customer/templates/customer/table_entry.html -->
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Enter Table Information - TableTap{% endblock %}
+
+{% block body_class %}bg-gray-100 min-h-screen flex items-center justify-center{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+    <!-- Logo and Header -->
+    <div class="text-center">
+        <div class="flex justify-center mb-4">
+            <div class="bg-primary p-3 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+            </div>
+        </div>
+        <h2 class="text-3xl font-bold text-primary">TableTap</h2>
+        <p class="text-gray-600 mt-1">Enter Your Table Information</p>
+    </div>
+    
+    <!-- Error Messages -->
+    {% if messages %}
+    <div class="alert alert-error shadow-lg">
+        <div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {% for message in messages %}
+            <span>{{ message }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Table Entry Form -->
+    <form class="mt-8 space-y-6" method="POST" action="{% url 'customer:table_entry' %}">
+        {% csrf_token %}
+        
+        <div class="space-y-4">
+            <!-- Restaurant Selection -->
+            <div>
+                <label for="restaurant_id" class="block text-sm font-medium text-gray-700">Restaurant</label>
+                <select id="restaurant_id" name="restaurant_id" required class="select select-bordered w-full mt-1">
+                    <option value="">Select a restaurant</option>
+                    {% for restaurant in restaurants %}
+                    <option value="{{ restaurant.id }}">{{ restaurant.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Table Number -->
+            <div>
+                <label for="table_number" class="block text-sm font-medium text-gray-700">Table Number</label>
+                <input id="table_number" name="table_number" type="number" required class="input input-bordered w-full mt-1" placeholder="Enter your table number">
+            </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary w-full">
+            View Menu
+        </button>
+    </form>
+    
+    <!-- Divider -->
+    <div class="text-center mt-6">
+        <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white text-gray-500">Or</span>
+            </div>
+        </div>
+        
+        <!-- Scan QR Code -->
+        <div class="mt-6">
+            <p class="text-gray-600 mb-2">Scan the QR code on your table</p>
+            <div class="flex justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Link -->
+    <div class="text-center mt-6 text-sm text-gray-600">
+        <p>Are you a restaurant staff or owner?</p>
+        <a href="{% url 'accounts:login' %}" class="text-primary hover:text-primary-focus font-medium">Login here</a>
+    </div>
+</div>
+{% endblock %}

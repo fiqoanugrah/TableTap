@@ -6,7 +6,226 @@ from django.contrib import messages
 import base64
 from io import BytesIO
 import qrcode
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+from .models import Restaurant
 
+User = get_user_model()
+
+# restaurants/views.py
+@login_required
+def user_management(request):
+    """View untuk manajemen user (admin dan staff)"""
+    # Tambahkan print statement untuk debugging
+    print("USER MANAGEMENT VIEW CALLED")
+    
+    # Pastikan user adalah admin (owner) dari restaurant
+    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('restaurants:dashboard')
+    
+    # Dapatkan restaurant milik user saat ini
+    restaurant = Restaurant.objects.filter(owner=request.user).first()
+    if not restaurant:
+        messages.error(request, "No restaurant found for your account.")
+        return redirect('restaurants:dashboard')
+    
+    # Get tab yang aktif
+    tab = request.GET.get('tab', 'admins')
+    
+    # Ambil admin users (selain user saat ini)
+    admin_users = User.objects.filter(
+        role='admin'
+    ).exclude(id=request.user.id)
+    
+    # Ambil staff users dari relasi ManyToMany
+    staff_users = restaurant.staff.all()
+    
+    context = {
+        'restaurant': restaurant,
+        'tab': tab,
+        'admin_users': admin_users if tab == 'admins' else [],
+        'staff_users': staff_users if tab == 'staff' else [],
+    }
+    
+    print("Rendering user_management.html")
+    return render(request, 'restaurants/user_management.html', context)
+
+@login_required
+def add_user(request):
+    """Tambah user admin atau staff baru"""
+    if request.method != 'POST':
+        return redirect('restaurants:user_management')
+    
+    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+        messages.error(request, "You don't have permission to add users.")
+        return redirect('restaurants:dashboard')
+    
+    # Dapatkan restaurant milik user saat ini
+    restaurant = Restaurant.objects.filter(owner=request.user).first()
+    if not restaurant:
+        messages.error(request, "No restaurant found for your account.")
+        return redirect('restaurants:dashboard')
+    
+    # Ambil data dari form
+    role = request.POST.get('role', 'staff')
+    first_name = request.POST.get('first_name', '')
+    last_name = request.POST.get('last_name', '')
+    email = request.POST.get('email', '')
+    phone = request.POST.get('phone', '')
+    password1 = request.POST.get('password1', '')
+    password2 = request.POST.get('password2', '')
+    
+    # Validasi data
+    if not (first_name and last_name and email and password1 and password2):
+        messages.error(request, "All fields are required.")
+        return redirect('restaurants:user_management')
+    
+    if password1 != password2:
+        messages.error(request, "Passwords do not match.")
+        return redirect('restaurants:user_management')
+    
+    # Cek apakah email sudah digunakan
+    if User.objects.filter(email=email).exists():
+        messages.error(request, f"User with email {email} already exists.")
+        return redirect('restaurants:user_management')
+    
+    # Buat username dari email (sebelum karakter @)
+    username = email.split('@')[0]
+    counter = 1
+    original_username = username
+    while User.objects.filter(username=username).exists():
+        username = f"{original_username}{counter}"
+        counter += 1
+    
+    # Buat user
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password1,
+        first_name=first_name,
+        last_name=last_name,
+        role=role,
+        phone=phone
+    )
+    
+    # Hubungkan user dengan restaurant
+    if role == 'admin':
+        # Untuk admin user, buat relasi dengan restaurant sebagai owner
+        # Jika dalam model saat ini hanya ada satu owner, mungkin perlu dipertimbangkan lagi
+        # Alternatifnya, kita bisa membuat relasi baru untuk admin tambahan
+        restaurant.owner = user
+        restaurant.save()
+    elif role == 'staff':
+        # Untuk staff user, tambahkan ke restaurant staff
+        restaurant.staff.add(user)
+    
+    messages.success(request, f"{role.title()} user {email} has been created successfully.")
+    return redirect('restaurants:user_management')
+
+@login_required
+def update_user(request, user_id):
+    """Update data user"""
+    if request.method != 'POST':
+        return redirect('restaurants:user_management')
+    
+    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+        messages.error(request, "You don't have permission to update users.")
+        return redirect('restaurants:dashboard')
+    
+    # Dapatkan restaurant milik user saat ini
+    restaurant = Restaurant.objects.filter(owner=request.user).first()
+    if not restaurant:
+        messages.error(request, "No restaurant found for your account.")
+        return redirect('restaurants:dashboard')
+    
+    # Ambil user yang akan diupdate
+    user_to_update = get_object_or_404(User, id=user_id)
+    
+    # Periksa apakah user terhubung dengan restaurant ini
+    is_associated = False
+    if user_to_update.role == 'admin' and restaurant.owner == user_to_update:
+        is_associated = True
+    elif user_to_update.role == 'staff' and restaurant.staff.filter(id=user_to_update.id).exists():
+        is_associated = True
+    
+    if not is_associated:
+        messages.error(request, "This user is not associated with your restaurant.")
+        return redirect('restaurants:user_management')
+    
+    # Ambil data dari form
+    first_name = request.POST.get('first_name', '')
+    last_name = request.POST.get('last_name', '')
+    email = request.POST.get('email', '')
+    phone = request.POST.get('phone', '')
+    
+    # Validasi data
+    if not (first_name and last_name and email):
+        messages.error(request, "All fields are required.")
+        return redirect('restaurants:user_management')
+    
+    # Periksa jika email diubah dan sudah ada di sistem
+    if email != user_to_update.email and User.objects.filter(email=email).exists():
+        messages.error(request, f"User with email {email} already exists.")
+        return redirect('restaurants:user_management')
+    
+    # Update user
+    user_to_update.first_name = first_name
+    user_to_update.last_name = last_name
+    user_to_update.email = email
+    user_to_update.phone = phone
+    user_to_update.save()
+    
+    messages.success(request, f"User {email} has been updated successfully.")
+    return redirect('restaurants:user_management')
+
+@login_required
+def deactivate_user(request, user_id):
+    """Nonaktifkan user"""
+    if request.method != 'POST':
+        return redirect('restaurants:user_management')
+    
+    if not hasattr(request.user, 'role') or request.user.role != 'admin':
+        messages.error(request, "You don't have permission to deactivate users.")
+        return redirect('restaurants:dashboard')
+    
+    # Dapatkan restaurant milik user saat ini
+    restaurant = Restaurant.objects.filter(owner=request.user).first()
+    if not restaurant:
+        messages.error(request, "No restaurant found for your account.")
+        return redirect('restaurants:dashboard')
+    
+    # Jangan izinkan user menonaktifkan diri sendiri
+    if str(user_id) == str(request.user.id):
+        messages.error(request, "You cannot deactivate your own account.")
+        return redirect('restaurants:user_management')
+    
+    # Ambil user yang akan dinonaktifkan
+    user_to_deactivate = get_object_or_404(User, id=user_id)
+    
+    # Periksa apakah user terhubung dengan restaurant ini
+    is_associated = False
+    if user_to_deactivate.role == 'admin' and restaurant.owner == user_to_deactivate:
+        is_associated = True
+    elif user_to_deactivate.role == 'staff' and restaurant.staff.filter(id=user_to_deactivate.id).exists():
+        is_associated = True
+    
+    if not is_associated:
+        messages.error(request, "This user is not associated with your restaurant.")
+        return redirect('restaurants:user_management')
+    
+    # Nonaktifkan user
+    user_to_deactivate.is_active = False
+    user_to_deactivate.save()
+    
+    # Jika user adalah staff, hapus dari restaurant
+    if user_to_deactivate.role == 'staff':
+        restaurant.staff.remove(user_to_deactivate)
+    
+    messages.success(request, f"User {user_to_deactivate.email} has been deactivated.")
+    return redirect('restaurants:user_management')
 @login_required
 def dashboard(request):
     """Dashboard view for restaurant owners"""

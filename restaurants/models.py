@@ -1,3 +1,4 @@
+# restaurants/models.py
 from django.db import models
 from django.conf import settings
 import qrcode
@@ -7,7 +8,8 @@ from PIL import Image
 import base64
 
 class Restaurant(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='owned_restaurants')
+    staff = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='staffed_restaurants', blank=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     address = models.CharField(max_length=255)

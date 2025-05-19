@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TableTap - Restaurant Management System{% endblock %}
+
+{% block body_class %}bg-gray-100{% endblock %}
+
+{% block content %}
+<div class="min-h-screen d-flex align-items-center justify-content-center py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card shadow-lg overflow-hidden">
+          <div class="row g-0">
+            <!-- Banner Side -->
+            <div class="col-lg-6 bg-primary text-white p-5 d-flex align-items-center">
+              <div class="text-center w-100">
+                <i class="bi bi-grid-3x3" style="font-size: 5rem;"></i>
+                <h1 class="display-5 fw-bold mt-3">TableTap</h1>
+                <p class="lead">Restaurant Management System</p>
+              </div>
+            </div>
+            
+            <!-- Call to Action Side -->
+            <div class="col-lg-6 p-5">
+              <h2 class="fw-bold mb-3">Streamline Your Restaurant Operations</h2>
+              <p class="text-muted mb-4">TableTap helps you manage orders, tables, and menu items efficiently. Perfect for restaurants of all sizes.</p>
+              
+              <div class="py-3">
+                {% if is_authenticated %}
+                  <div class="mb-4">
+                    <h5 class="fw-bold">Welcome Back!</h5>
+                    {% if has_restaurant %}
+                      <a href="{% url 'restaurants:dashboard' %}" class="btn btn-primary w-100 mb-2">
+                        Go to Dashboard
+                      </a>
+                    {% else %}
+                      <div>
+                        <a href="{% url 'restaurants:create_restaurant' %}" class="btn btn-primary w-100 mb-2">
+                          Create Your Restaurant
+                        </a>
+                        <a href="{% url 'account_logout' %}" class="btn btn-outline w-100">
+                          Logout
+                        </a>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="mb-4">
+                    <h5 class="fw-bold">Restaurant Owners & Staff</h5>
+                    <a href="{% url 'account_login' %}" class="btn btn-primary w-100">
+                      Sign In
+                    </a>
+                    <p class="small text-muted mt-1">Access your restaurant dashboard to manage orders, menu, and staff.</p>
+                  </div>
+                  
+                  <div class="py-3 border-top">
+                    <h5 class="fw-bold">Customers</h5>
+                    <p class="text-muted mb-2">No account needed! Just scan the QR code at your table to start ordering.</p>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#tableEntryModal">
+                      Enter Table Number
+                    </button>
+                  </div>
+                  
+                  <div class="py-3 border-top">
+                    <h5 class="fw-bold">New Restaurant?</h5>
+                    <a href="{% url 'account_signup' %}" class="text-primary text-decoration-none fw-bold">
+                      Create a restaurant account
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table Entry Modal -->
+<div class="modal fade" id="tableEntryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Enter Your Table Number</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="tableEntryForm" method="GET" action="">
+          <div class="mb-3">
+            <label for="tableCode" class="form-label">Table Code</label>
+            <input type="text" class="form-control" id="tableCode" name="code" required>
+            <div class="form-text">Enter the table code displayed at your table or from the QR code.</div>
+          </div>
+          <button type="submit" class="btn btn-primary">View Menu</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Update form action when submitting table code
+  document.getElementById('tableEntryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const tableCode = document.getElementById('tableCode').value.trim();
+    if (tableCode) {
+      window.location.href = `/menu/table/${tableCode}/`;
+    }
+  });
+</script>
+{% endblock %}

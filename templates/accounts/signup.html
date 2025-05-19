@@ -1,0 +1,99 @@
+{% extends 'base/base.html' %}
+{% load i18n %}
+{% load account socialaccount %}
+
+{% block title %}Create Restaurant Account - TableTap{% endblock %}
+
+{% block body_class %}bg-gray-100 min-h-screen flex items-center justify-center{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+    <!-- Logo and Header -->
+    <div class="text-center">
+        <div class="flex justify-center mb-4">
+            <div class="bg-primary p-3 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+            </div>
+        </div>
+        <h2 class="text-2xl font-bold text-primary">{% trans "Create Restaurant Account" %}</h2>
+        <p class="text-gray-600 mt-1">{% trans "Get started with TableTap by creating your account" %}</p>
+    </div>
+    
+    <!-- Error Messages -->
+    {% if form.errors %}
+    <div class="alert alert-error shadow-lg">
+        <div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>{% trans "Please correct the errors below." %}</span>
+        </div>
+    </div>
+    
+    <div class="space-y-2 text-sm text-red-600">
+        {% for field in form %}
+            {% for error in field.errors %}
+                <p>{{ field.label }}: {{ error }}</p>
+            {% endfor %}
+        {% endfor %}
+        
+        {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Signup Form -->
+    <form class="mt-8 space-y-6" method="POST" action="{% url 'account_signup' %}">
+        {% csrf_token %}
+        
+        {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+        {% endif %}
+        
+        <!-- Hidden role field - default to 'admin' -->
+        <input type="hidden" name="role" value="admin">
+        
+        <div class="space-y-4">
+            <!-- Username Field -->
+            <div>
+                <label for="id_username" class="block text-sm font-medium text-gray-700">{% trans "Username" %}</label>
+                <input id="id_username" name="username" type="text" autocomplete="username" required class="input input-bordered w-full mt-1" placeholder="Username">
+            </div>
+            
+            <!-- Email Field -->
+            <div>
+                <label for="id_email" class="block text-sm font-medium text-gray-700">{% trans "Email" %}</label>
+                <input id="id_email" name="email" type="email" autocomplete="email" required class="input input-bordered w-full mt-1" placeholder="your@email.com">
+            </div>
+            
+            <!-- Password Field -->
+            <div>
+                <label for="id_password1" class="block text-sm font-medium text-gray-700">{% trans "Password" %}</label>
+                <input id="id_password1" name="password1" type="password" autocomplete="new-password" required class="input input-bordered w-full mt-1" placeholder="••••••••">
+            </div>
+            
+            <!-- Password Confirmation -->
+            <div>
+                <label for="id_password2" class="block text-sm font-medium text-gray-700">{% trans "Confirm Password" %}</label>
+                <input id="id_password2" name="password2" type="password" autocomplete="new-password" required class="input input-bordered w-full mt-1" placeholder="••••••••">
+            </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary w-full">
+            {% trans "Create Restaurant Account" %}
+        </button>
+    </form>
+    
+    <!-- Sign In Link -->
+    <div class="text-center mt-6">
+        <p class="text-sm text-gray-600">
+            {% trans "Already have an account?" %} 
+            <a href="{% url 'account_login' %}" class="text-primary hover:text-primary-focus font-medium">
+                {% trans "Sign In" %}
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,4 +1,3 @@
-# orders/templates/orders/base.html
 {% extends 'base/base.html' %}
 {% load static %}
 
@@ -60,6 +59,21 @@
 
         <!-- Main Content Area -->
         <div class="p-4 md:p-6">
+            {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
             {% block staff_content %}{% endblock %}
         </div>
     </div>
@@ -129,6 +143,9 @@
                         All Orders
                     </a>
                 </li>
+                
+                <!-- Tampilkan link Restaurant Dashboard hanya untuk admin -->
+                {% if request.user.role == 'admin' %}
                 <li>
                     <a href="{% url 'restaurants:dashboard' %}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,6 +155,7 @@
                         Restaurant Dashboard
                     </a>
                 </li>
+                {% endif %}
             </ul>
 
             <!-- Restaurant Info -->
@@ -152,7 +170,14 @@
                     {% endif %}
                     <div>
                         <div class="font-bold">{{ restaurant.name }}</div>
-                        <div class="text-xs opacity-70">{{ restaurant.address|truncatechars:20 }}</div>
+                        <div class="text-xs opacity-70">
+                            {{ restaurant.address|truncatechars:20 }}
+                            {% if request.user.role == 'admin' %}
+                            <span class="badge badge-sm badge-secondary">Owner</span>
+                            {% elif request.user.role == 'staff' %}
+                            <span class="badge badge-sm badge-accent">Staff</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>

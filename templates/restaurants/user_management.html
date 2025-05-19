@@ -1,0 +1,354 @@
+{% extends 'restaurants/base.html' %}
+{% load static %}
+
+{% block title %}User Management - {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-primary">User Management</h1>
+        <p class="text-gray-600">Manage users for {{ restaurant.name }}</p>
+    </div>
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Tab Navigation -->
+    <div class="tabs tabs-boxed mb-6">
+        <a class="tab {% if tab == 'admins' %}tab-active{% endif %}" href="{% url 'restaurants:user_management' %}?tab=admins">Admins</a>
+        <a class="tab {% if tab == 'staff' %}tab-active{% endif %}" href="{% url 'restaurants:user_management' %}?tab=staff">Staff</a>
+    </div>
+    
+    <!-- Admin Users Tab -->
+    {% if tab == 'admins' %}
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-primary">Restaurant Admins</h2>
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-admin-modal').showModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Admin
+            </button>
+        </div>
+        
+        {% if admin_users %}
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in admin_users %}
+                    <tr>
+                        <td>{{ user.get_full_name|default:user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.phone|default:"Not provided" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge badge-success">Active</span>
+                            {% else %}
+                            <span class="badge badge-error">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="flex space-x-2">
+                                <button class="btn btn-sm btn-ghost" onclick="document.getElementById('edit-user-{{ user.id }}').showModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                {% if user.id != request.user.id %}
+                                <form method="post" action="{% url 'restaurants:deactivate_user' user.id %}" onsubmit="return confirm('Are you sure you want to deactivate this admin?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-ghost text-error">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-gray-500">
+            <p>No additional admin users found.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Staff Users Tab -->
+    {% if tab == 'staff' %}
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-primary">Restaurant Staff</h2>
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-staff-modal').showModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Staff
+            </button>
+        </div>
+        
+        {% if staff_users %}
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in staff_users %}
+                    <tr>
+                        <td>{{ user.get_full_name|default:user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.phone|default:"Not provided" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge badge-success">Active</span>
+                            {% else %}
+                            <span class="badge badge-error">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="flex space-x-2">
+                                <button class="btn btn-sm btn-ghost" onclick="document.getElementById('edit-user-{{ user.id }}').showModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <form method="post" action="{% url 'restaurants:deactivate_user' user.id %}" onsubmit="return confirm('Are you sure you want to deactivate this staff member?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-ghost text-error">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-gray-500">
+            <p>No staff users found. Add staff to help manage your restaurant.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Add Admin Modal -->
+    <dialog id="add-admin-modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Add New Admin</h3>
+            <form method="post" action="{% url 'restaurants:add_user' %}">
+                {% csrf_token %}
+                <input type="hidden" name="role" value="admin">
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">First Name</span>
+                    </label>
+                    <input type="text" name="first_name" placeholder="First name" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Last Name</span>
+                    </label>
+                    <input type="text" name="last_name" placeholder="Last name" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" placeholder="Email address" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Phone (optional)</span>
+                    </label>
+                    <input type="tel" name="phone" placeholder="Phone number" class="input input-bordered" />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Password</span>
+                    </label>
+                    <input type="password" name="password1" placeholder="Password" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Confirm Password</span>
+                    </label>
+                    <input type="password" name="password2" placeholder="Confirm password" class="input input-bordered" required />
+                </div>
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Create Admin</button>
+                    <button type="button" class="btn" onclick="document.getElementById('add-admin-modal').close()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+    
+    <!-- Add Staff Modal -->
+    <dialog id="add-staff-modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Add New Staff</h3>
+            <form method="post" action="{% url 'restaurants:add_user' %}">
+                {% csrf_token %}
+                <input type="hidden" name="role" value="staff">
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">First Name</span>
+                    </label>
+                    <input type="text" name="first_name" placeholder="First name" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Last Name</span>
+                    </label>
+                    <input type="text" name="last_name" placeholder="Last name" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" placeholder="Email address" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Phone (optional)</span>
+                    </label>
+                    <input type="tel" name="phone" placeholder="Phone number" class="input input-bordered" />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Password</span>
+                    </label>
+                    <input type="password" name="password1" placeholder="Password" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Confirm Password</span>
+                    </label>
+                    <input type="password" name="password2" placeholder="Confirm password" class="input input-bordered" required />
+                </div>
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Create Staff</button>
+                    <button type="button" class="btn" onclick="document.getElementById('add-staff-modal').close()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+    
+    <!-- Edit User Modals -->
+    {% for user in admin_users|default:'' %}
+    <dialog id="edit-user-{{ user.id }}" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Edit User: {{ user.get_full_name|default:user.username }}</h3>
+            <form method="post" action="{% url 'restaurants:update_user' user.id %}">
+                {% csrf_token %}
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">First Name</span>
+                    </label>
+                    <input type="text" name="first_name" placeholder="First name" value="{{ user.first_name }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Last Name</span>
+                    </label>
+                    <input type="text" name="last_name" placeholder="Last name" value="{{ user.last_name }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" placeholder="Email address" value="{{ user.email }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Phone (optional)</span>
+                    </label>
+                    <input type="tel" name="phone" placeholder="Phone number" value="{{ user.phone|default:'' }}" class="input input-bordered" />
+                </div>
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                    <button type="button" class="btn" onclick="document.getElementById('edit-user-{{ user.id }}').close()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+    {% endfor %}
+    
+    {% for user in staff_users|default:'' %}
+    <dialog id="edit-user-{{ user.id }}" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Edit User: {{ user.get_full_name|default:user.username }}</h3>
+            <form method="post" action="{% url 'restaurants:update_user' user.id %}">
+                {% csrf_token %}
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">First Name</span>
+                    </label>
+                    <input type="text" name="first_name" placeholder="First name" value="{{ user.first_name }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Last Name</span>
+                    </label>
+                    <input type="text" name="last_name" placeholder="Last name" value="{{ user.last_name }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <input type="email" name="email" placeholder="Email address" value="{{ user.email }}" class="input input-bordered" required />
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Phone (optional)</span>
+                    </label>
+                    <input type="tel" name="phone" placeholder="Phone number" value="{{ user.phone|default:'' }}" class="input input-bordered" />
+                </div>
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                    <button type="button" class="btn" onclick="document.getElementById('edit-user-{{ user.id }}').close()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+    {% endfor %}
+</div>
+{% endblock %}

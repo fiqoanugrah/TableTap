@@ -1,18 +1,23 @@
+"""
+Main URL Configuration for the TableTap project
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from accounts.views import landing_view, home_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', landing_view, name='landing'),
+    path('home/', home_view, name='home'),
     path('accounts/', include('allauth.urls')),
-    path('restaurant/', include('restaurants.urls', namespace='restaurants')),
-    path('staff/', include('orders.urls', namespace='orders')),
-    path('menu/', include('customer.urls', namespace='customer')),
+    path('accounts/', include('accounts.urls')),
+    path('restaurant/', include('restaurants.urls')),
     path('orders/', include('orders.urls')),
-    path('', RedirectView.as_view(url='/accounts/login/'), name='home'),  # Redirect ke login page
+    path('menu/', include('customer.urls')), 
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

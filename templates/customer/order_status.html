@@ -9,7 +9,7 @@
     <header class="bg-primary text-white shadow-md">
         <div class="container mx-auto px-4 py-4">
             <div class="flex items-center">
-                <a href="{% url 'customer:menu' order.restaurant.id order.table.id %}" class="mr-2">
+                <a href="{% url 'customer:menu_view' order.restaurant.id order.table.id %}" class="mr-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -35,11 +35,7 @@
                         {% elif order.status == 'ready' %}badge-success
                         {% elif order.status == 'completed' %}badge-success
                         {% else %}badge-error{% endif %}">
-                        {% for status_code, status_label in order.STATUS_CHOICES %}
-                            {% if status_code == order.status %}
-                                {{ status_label }}
-                            {% endif %}
-                        {% endfor %}
+                        {{ order.get_status_display }}
                     </span>
                 </div>
                 <p class="text-sm text-gray-500 mt-1">{{ order.created_at|date:"F j, Y, g:i a" }}</p>
@@ -108,8 +104,6 @@
                         <p>Your order is ready! A staff member will bring it to your table shortly.</p>
                     {% elif order.status == 'completed' %}
                         <p>Your order has been completed. Enjoy your meal!</p>
-                    {% elif order.status == 'cancelled' %}
-                        <p>This order has been cancelled.</p>
                     {% endif %}
                 </div>
                 
@@ -126,7 +120,7 @@
             
             <!-- Order Items -->
             <ul class="divide-y">
-                {% for item in order.items.all %}
+                {% for item in order_items %}
                 <li class="p-4">
                     <div class="flex justify-between">
                         <div>
@@ -162,7 +156,7 @@
         
         <!-- Back to Menu Button -->
         <div class="text-center">
-            <a href="{% url 'customer:menu' order.restaurant.id order.table.id %}" class="btn btn-primary">
+            <a href="{% url 'customer:menu_view' order.restaurant.id order.table.id %}" class="btn btn-primary">
                 Back to Menu
             </a>
         </div>
@@ -170,7 +164,7 @@
     
     <!-- Bottom Navigation -->
     <div class="btm-nav btm-nav-sm bg-white border-t shadow-md">
-        <a href="{% url 'customer:menu' order.restaurant.id order.table.id %}" class="text-primary">
+        <a href="{% url 'customer:menu_view' order.restaurant.id order.table.id %}" class="text-primary">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
